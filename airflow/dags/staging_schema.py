@@ -1,17 +1,7 @@
 from google.cloud.bigquery import SchemaField 
 
-tables = ['COMMODITIES', 'EXCHANGE_RATE', 'SG_IR', 'STOCK_FUNDAMENTALS', 'STOCK_INFO', 'ALL_PRICE', 'ALL_TA', 'US_YIELDS']
+tables = ['EXCHANGE_RATE', 'SG_IR', 'STOCK_FUNDAMENTALS', 'STOCK_INFO', 'STOCK_DIVIDENDS', 'ALL_PRICE', 'ALL_TA', 'STOCK_QUERY']
 
-COMMODITIES = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
-,SchemaField('Commodities_id', 'STRING', 'NULLABLE', None, ())
-,SchemaField('Name_id', 'STRING', 'NULLABLE', None, ())
-,SchemaField('High', 'FLOAT', 'NULLABLE', None, ())
-,SchemaField('Low', 'FLOAT', 'NULLABLE', None, ())
-,SchemaField('Open', 'FLOAT', 'NULLABLE', None, ())
-,SchemaField('Close', 'FLOAT', 'NULLABLE', None, ())
-,SchemaField('Adj_close', 'FLOAT', 'NULLABLE', None, ())
-,SchemaField('Volume', 'FLOAT', 'NULLABLE', None, ())
-,]
 
 EXCHANGE_RATE = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
 ,SchemaField('Exchange_rate_id', 'STRING', 'NULLABLE', None, ())
@@ -38,6 +28,7 @@ SG_IR = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
 ,]
 
 STOCK_FUNDAMENTALS = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
+,SchemaField('Ticker_id', 'STRING', 'NULLABLE', None, ())
 ,SchemaField('Total_asset_turnover', 'FLOAT', 'NULLABLE', None, ())
 ,SchemaField('Cash_ratio', 'FLOAT', 'NULLABLE', None, ())
 ,SchemaField('Debt_ratio', 'FLOAT', 'NULLABLE', None, ())
@@ -49,6 +40,12 @@ STOCK_INFO = [SchemaField('Stock', 'STRING', 'NULLABLE', None, ())
 ,SchemaField('Stock_id', 'STRING', 'NULLABLE', None, ())
 ,SchemaField('Stock_industry', 'STRING', 'NULLABLE', None, ())
 ,SchemaField('Stock_summary', 'STRING', 'NULLABLE', None, ())
+,]
+
+STOCK_DIVIDENDS = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
+,SchemaField('Stock', 'STRING', 'NULLABLE', None, ())
+,SchemaField('Ticker', 'STRING', 'NULLABLE', None, ())
+,SchemaField('Dividends', 'FLOAT', 'NULLABLE', None, ())
 ,]
 
 ALL_PRICE = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
@@ -72,13 +69,16 @@ ALL_TA = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
 ,SchemaField('Value', 'FLOAT', 'NULLABLE', None, ())
 ,]
 
-US_YIELDS = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
-,SchemaField('US_yields_id', 'STRING', 'NULLABLE', None, ())
-,SchemaField('Name_id', 'STRING', 'NULLABLE', None, ())
-,SchemaField('High', 'FLOAT', 'NULLABLE', None, ())
-,SchemaField('Low', 'FLOAT', 'NULLABLE', None, ())
-,SchemaField('Open', 'FLOAT', 'NULLABLE', None, ())
-,SchemaField('Close', 'FLOAT', 'NULLABLE', None, ())
-,SchemaField('Adj_close', 'FLOAT', 'NULLABLE', None, ())
-,SchemaField('Volume', 'FLOAT', 'NULLABLE', None, ())
+STOCK_QUERY = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
+,SchemaField('Ticker', 'STRING', 'NULLABLE', None, ())
+,SchemaField('Name', 'STRING', 'NULLABLE', None, ())
+,SchemaField('Adj_Close', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Exchange_rate', 'STRING', 'NULLABLE', None, ())
+,SchemaField('FX_rate', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Industry', 'STRING', 'NULLABLE', None, ())
+,SchemaField('Description', 'STRING', 'NULLABLE', None, ())
+,SchemaField('ROE', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('PE_Ratio', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Sora', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Dividends', 'FLOAT', 'NULLABLE', None, ())
 ,]

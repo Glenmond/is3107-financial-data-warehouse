@@ -114,6 +114,7 @@ def transform_task_group():
         credentials = service_account.Credentials.from_service_account_file(
                         google_cloud_path,
                     )
+        data['Date'] = pd.to_datetime(data['Date'])
         return pandas_gbq.to_gbq(data, f'{dataset_name}.{destination_table_name}', project_id=f'{project_id}', credentials=credentials, if_exists='replace')    
 
     # Transform Big Query

@@ -1,40 +1,25 @@
-#CREATE OR REPLACE TABLE `{{ params.dwh_dataset }}.D_US_YIELDS` AS
-SELECT  
-  id.DATE as DATE,
-  id.NAME_ID as STOCK_ID,
-  NULL as COMMODITIES_ID,
-  NULL as EXCHANGE_ID
-FROM
-  `test-344015.TEST_DWH.D_STOCK_PRICE` id
-UNION DISTINCT
-SELECT 
-  DC.DATE as DATE,
-  NULL as STOCK_ID,
-  DC.NAME_ID as COMMODITIES_ID,
-  NULL as EXCHANGE_ID
-FROM
-  `test-344015.TEST_DWH.D_COMMODITIES` DC
-UNION DISTINCT
-SELECT 
-  DP.DATE as DATE,
-  NULL as STOCK_ID,
-  NULL as COMMODITIES_ID,
-  DP.EXCHANGE_ID as EXCHANGE_ID
-FROM
-  `test-344015.TEST_DWH.D_EXCHANGE_RATE` DP
-ORDER BY DATE ASC
-
+INSERT `{{ params.dwh_dataset }}.F_STOCK_QUERY` 
 SELECT 
 ps.Date as DATE,
-ps.Ticker as STOCK_TICKER,
-ps.Stock as STOCK_NAME,
-ps.Adj_Close as STOCK_PRICE,
-si.Industry as STOCK_INDUSTRY,
-si.Summary as STOCK_DESCRIPTION,
-sf.Total_Liab as TOTAL_LIABILITIES,
-sf.Cash as TOTAL_CASH,
-sf.Total_Stockholder_Equity
-
- FROM `test-344015.TEST_DWH_STAGING.PRICE_STAGING` ps 
- LEFT JOIN `test-344015.TEST_DWH_STAGING.STOCK_INFO_STAGING` si 
- ON ps.Ticker = si.Ticker
+ps.Ticker_id as Ticker,
+ps.Name_id as Name,
+ps.Adj_Close as Adj_Close,
+ps.Exchange_rate_ticker as Exchange_rate,
+ps.Conversion_factor as FX_rate,
+si.Stock_industry as Industry,
+si.Stock_summary as Description,
+sf.Return_on_equity as ROE,
+sf.Price_earning_ratio as PE_RATIO,
+sgir.sora as Sora,
+div.Dividends as Dividends
+ FROM `{{ params.project_id }}.{{ params.dwh_dataset }}.D_ALL_PRICE` ps 
+ LEFT JOIN `{{ params.project_id }}.{{ params.dwh_dataset }}.D_STOCK_INFO` si 
+ ON ps.Ticker_id = si.Ticker_id
+ LEFT JOIN `{{ params.project_id }}.{{ params.dwh_dataset }}.D_STOCK_FUNDAMENTALS` sf
+ ON ps.Ticker_id = sf.Ticker_id and ps.Date = sf.Date
+ LEFT JOIN `{{ params.project_id }}.{{ params.dwh_dataset }}.D_SG_IR` sgir
+ ON ps.Date = sgir.Date 
+ LEFT JOIN `{{ params.project_id }}.{{ params.dwh_dataset }}.D_STOCK_DIVIDENDS` div
+ ON ps.Date = div.Date and ps.Ticker_id = div.Ticker
+ ORDER BY 
+ Date DESC, Ticker ASC

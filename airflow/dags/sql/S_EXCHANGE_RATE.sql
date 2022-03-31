@@ -2,7 +2,7 @@ CREATE OR REPLACE TABLE `{{ params.staging_destination_dataset }}.S_EXCHANGE_RAT
 SELECT
 Date,
 Ticker as Exchange_rate_id,
-Commodities as Name_id,
+Exchange_rate as Name_id,
 High,
 Low,
 Open,

@@ -10,7 +10,7 @@ price.Close * er.Adj_Close AS Close,
 price.Adj_Close * er.Adj_Close AS Adj_close,
 price.Volume AS Volume,
 er.Adj_Close AS Conversion_factor,
-er.Commodities AS Exchange_rate_ticker
+er.Exchange_rate AS Exchange_rate_ticker
 FROM
 `{{ params.project_id }}.{{ params.staging_source_dataset }}.PRICE_STAGING` price
 LEFT JOIN

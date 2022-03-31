@@ -175,7 +175,7 @@ def extract_data_task_group():
             exchange_rate_df = get_adj_close(exchange_rate_list, start_date=(datetime.today() - relativedelta(months=2)).strftime("%Y-%m-%d"), end_date=(datetime.today()).strftime("%Y-%m-%d"))
         else:    
             exchange_rate_df = get_adj_close(exchange_rate_list, start_date=(datetime.today() - relativedelta(months=12)).strftime("%Y-%m-%d"), end_date=(datetime.today()).strftime("%Y-%m-%d"))
-        exchange_rate_df['Commodities'] = exchange_rate_df['Ticker'].map(exchange_rate_mapping)
+        exchange_rate_df['Exchange_rate'] = exchange_rate_df['Ticker'].map(exchange_rate_mapping)
         #sgd_sgd = pd.DataFrame(columns=['Ticker', 'High', 'Low', 'Open', 'Close', 'Volume', 'Adj Close'])
         return exchange_rate_df.rename_axis('Date').reset_index()
 

@@ -68,7 +68,10 @@ def load_dwh_task_group():
         # Create staging tables
         for table_id in ss.tables:
             schema = eval('ss.'+table_id)
-            create_table('D_' + table_id, schema, dataset_name, client)
+            if table_id != 'STOCK_QUERY':
+                create_table('D_' + table_id, schema, dataset_name, client)
+            else:
+                create_table('F_' + table_id, schema, dataset_name, client)
         return
 
     # Operators
@@ -151,11 +154,22 @@ def load_dwh_task_group():
         write_disposition='WRITE_APPEND',
         sql=f'''
         INSERT `{project_id}.{dwh_dataset}.D_ALL_TA`
-        SELECT DISTINCT *
+        SELECT DISTINCT CAST(Date as Date) AS Date, Ticker_id, Name_id, TA_id, TA_description, Value
         FROM
         `{project_id}.{staging_dataset}.S_ALL_TA`
         '''
     )
 
+    build_fact_table = BigQueryExecuteQueryOperator(
+        task_id = 'build_fact_table',
+        use_legacy_sql = False,
+        params = {
+            'project_id': project_id,
+            'dwh_dataset': dwh_dataset
+        },
+        sql = './sql/F_STOCK_QUERY.sql'
+    )
+
     check_dwh_exists = check_dwh_tables_exists(project_id, dwh_dataset)
     check_dwh_exists >> [distinct_all_prices, distinct_all_ta, distinct_exchange_rate, distinct_sg_ir, distinct_stock_dividends, distinct_stock_fundamentals, distinct_stock_info]
+    [distinct_all_prices, distinct_all_ta, distinct_exchange_rate, distinct_sg_ir, distinct_stock_dividends, distinct_stock_fundamentals, distinct_stock_info] >> build_fact_table
