@@ -1,4 +1,14 @@
 from airflow.providers.google.cloud.transfers.gcs_to_bigquery import GCSToBigQueryOperator
+from airflow.decorators import task
+import os
+from params import google_cloud_path
+from google.cloud import bigquery
+from google.oauth2 import service_account
+from google.cloud import exceptions
+import os
+import argparse
+import logging
+from params import google_cloud_path
 
 # Define dag variables
 project_id = 'test-344015'
@@ -8,26 +18,50 @@ gs_bucket = 'is3107_bucket_test'
 
 
 def gcs_to_staging_task_group():
-    # Staging To DWH 
-    load_ta = GCSToBigQueryOperator(
-        task_id = 'load_ta',
-        bucket = gs_bucket,
-        source_objects = ['ta_prices.csv'],
-        destination_project_dataset_table = f'{project_id}:{staging_dataset}.TA_STAGING',
-        write_disposition='WRITE_TRUNCATE',
-        source_format = 'csv',
-        skip_leading_rows = 1
-    )
 
-    load_commodities = GCSToBigQueryOperator(
-        task_id = 'load_commodities',
-        bucket = gs_bucket,
-        source_objects = ['commodities.csv'],
-        destination_project_dataset_table = f'{project_id}:{staging_dataset}.COMMODITIES_STAGING',
-        write_disposition='WRITE_TRUNCATE',
-        source_format = 'csv',
-        skip_leading_rows = 1
-    )
+    def get_client(project_id, service_account):
+        '''
+        Get client object based on the project_id.
+        Parameters:
+            - project_id (str): id of project
+            - service_account (str): path to a JSON service account. If the path
+            is blanked, use application default authentication instead.
+        '''
+        if service_account:
+            logging.info(f'Getting client from json file path {service_account}')
+            credentials = service_account.Credentials.from_service_account_file(
+                service_account)
+            client = bigquery.Client(project_id, credentials = credentials)
+        else:
+            logging.info('Getting client from application default authentication')
+            client = bigquery.Client(project_id)
+        return client
+
+    def create_dataset(dataset_id, client):
+        '''
+        Create dataset in a project
+        Parameteres:
+            - dataset_id (str): ID of dataset to be created
+            - client (obj): client object
+        '''
+
+        try:
+            dataset = client.get_dataset(dataset_id)
+        except exceptions.NotFound:
+            logging.info(f'Creating dataset {dataset_id}')
+            client.create_dataset(dataset_id)
+        else:
+            logging.info(f'Dataset not created. {dataset_id} already exists.')
+
+    @task()
+    def check_staging_exists(project_id, dataset_name):
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_cloud_path
+        # Get client
+        client = get_client(project_id, '')
+        # Create datasets
+        create_dataset(dataset_name, client)
+
+    # Staging To DWH 
 
     load_prices = GCSToBigQueryOperator(
         task_id = 'load_prices',
@@ -54,16 +88,6 @@ def gcs_to_staging_task_group():
         bucket = gs_bucket,
         source_objects = ['sg_ir.csv'],
         destination_project_dataset_table = f'{project_id}:{staging_dataset}.SG_IR_STAGING',
-        write_disposition='WRITE_TRUNCATE',
-        source_format = 'csv',
-        skip_leading_rows = 1
-    )
-
-    load_us_yields = GCSToBigQueryOperator(
-        task_id = 'load_us_yields',
-        bucket = gs_bucket,
-        source_objects = ['us_yields.csv'],
-        destination_project_dataset_table = f'{project_id}:{staging_dataset}.US_YIELDS_STAGING',
         write_disposition='WRITE_TRUNCATE',
         source_format = 'csv',
         skip_leading_rows = 1
@@ -106,3 +130,6 @@ def gcs_to_staging_task_group():
         source_format = 'csv',
         skip_leading_rows = 1
     )
+
+    staging_exists = check_staging_exists(project_id, staging_dataset)
+    staging_exists >> [load_prices, load_sg_ir, load_exchange_rate, load_stock_info, load_stock_fundamentals, load_stock_dividends]

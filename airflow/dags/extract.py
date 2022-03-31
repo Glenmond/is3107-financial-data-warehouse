@@ -70,18 +70,34 @@ def extract_data_task_group():
         sti['Stock Symbol'] = sti['Stock Symbol'].apply(lambda x: x.split(" ")[1] + ".SI" )
         return sti.set_index('Stock Symbol').to_dict()['Company']
 
-    @task(task_id='extract_stock_prices')
-    def extract_stock_prices(sti_tickers, bucket_name):
+    @task(task_id='extract_all_prices')
+    def extract_all_prices(sti_tickers, bucket_name):
         """
         #### Extract prices
-        Extract Stock prices in the STI Universe
+        Extract all prices for stock market analysis
         """
-        tickers_list = [*sti_tickers.keys()]
+        fixed_tickers = {
+            'CL=F': 'Crude Oil',
+            'BZ=F': 'Brent Oil',
+            'ZC=F': 'Corn',
+            'ZS=F': 'Soybean',
+            'ZR=F': 'Rice',
+            'KC=F': 'Coffee',
+            'GC=F': 'Gold',
+            'SI=F': 'Silver',
+            'HG=F': 'Copper',
+            'SB=F': 'Sugar',
+            '^TNX': 'US Treasury Yield 10 Years',
+            '^TYX': 'US Treasury Yield 30 Years',
+            '^FVX': 'US Treasury Yield 5 Years'
+        }
+        full_tickers = {**sti_tickers, **fixed_tickers}
+        tickers_list = [*full_tickers.keys()]
         if blob_exists(bucket_name, 'prices.csv'):
             prices_df = get_adj_close(tickers_list, start_date=(datetime.today() - relativedelta(months=2)).strftime("%Y-%m-%d"), end_date=(datetime.today()).strftime("%Y-%m-%d"))
         else:    
             prices_df = get_adj_close(tickers_list, start_date=(datetime.today() - relativedelta(months=12)).strftime("%Y-%m-%d"), end_date=(datetime.today()).strftime("%Y-%m-%d"))
-        prices_df['Stock'] = prices_df['Ticker'].map(sti_tickers)
+        prices_df['Name'] = prices_df['Ticker'].map(full_tickers)
         return prices_df.rename_axis('Date').reset_index()
 
     @task(task_id='extract_stock_info')
@@ -145,28 +161,6 @@ def extract_data_task_group():
                 dividend_df = pd.concat([div_df, dividend_df])
         return dividend_df.rename_axis('Date').reset_index()
 
-    @task(task_id='extract_commodities')
-    def extract_commodities(bucket_name):
-        commodities_mapping = {
-            'CL=F': 'Crude Oil',
-            'BZ=F': 'Brent Oil',
-            'ZC=F': 'Corn',
-            'ZS=F': 'Soybean',
-            'ZR=F': 'Rice',
-            'KC=F': 'Coffee',
-            'GC=F': 'Gold',
-            'SI=F': 'Silver',
-            'HG=F': 'Copper',
-            'SB=F': 'Sugar'
-        }
-        commodities_list = [*commodities_mapping.keys()]
-        if blob_exists(bucket_name, 'commodities.csv'):
-            commodities_df = get_adj_close(commodities_list, start_date=(datetime.today() - relativedelta(months=2)).strftime("%Y-%m-%d"), end_date=(datetime.today()).strftime("%Y-%m-%d"))
-        else:    
-            commodities_df = get_adj_close(commodities_list, start_date=(datetime.today() - relativedelta(months=12)).strftime("%Y-%m-%d"), end_date=(datetime.today()).strftime("%Y-%m-%d"))
-        commodities_df['Commodities'] = commodities_df['Ticker'].map(commodities_mapping)
-        return commodities_df.rename_axis('Date').reset_index()
-
     @task(task_id='extract_exchange_rates')
     def extract_exchange_rates(bucket_name):
         exchange_rate_mapping = {
@@ -201,22 +195,8 @@ def extract_data_task_group():
         sg_interest_rate['Date']= pd.to_datetime(sg_interest_rate['Date'])
         return sg_interest_rate
 
-    @task(task_id='extract_us_yields')
-    def extract_us_yields(bucket_name):
-        yields_mapping = {
-            '^TNX': 'US Treasury Yield 10 Years',
-            '^TYX': 'US Treasury Yield 30 Years',
-            '^FVX': 'US Treasury Yield 5 Years',
-        }
-        yields_list = [*yields_mapping.keys()]
-        if blob_exists(bucket_name, 'commodities.csv'):
-            yields_df = get_adj_close(yields_list, start_date=(datetime.today() - relativedelta(months=2)).strftime("%Y-%m-%d"), end_date=(datetime.today()).strftime("%Y-%m-%d"))
-        else:    
-            yields_df = get_adj_close(yields_list, start_date=(datetime.today() - relativedelta(months=12)).strftime("%Y-%m-%d"), end_date=(datetime.today()).strftime("%Y-%m-%d"))
-        yields_df['Treasury_Yield'] = yields_df['Ticker'].map(yields_mapping)
-        return yields_df.rename_axis('Date').reset_index()
 
-    @task(task_id='extract_stock_ta')
+    @task(task_id='extract_all_ta')
     def transform_prices_ta(sti_tickers, bucket_name, df):
         """
         #### Transform task for prices
@@ -290,20 +270,16 @@ def extract_data_task_group():
     # Scrape STI Tickers
     tickers = scrape_sti_tickers()
     # Stock Prices 
-    price_df = extract_stock_prices(tickers, bucket_name=bucket)
+    price_df = extract_all_prices(tickers, bucket_name=bucket)
     # Stock Info, Fundamentals and Div
     stock_info_df = extract_stock_info(tickers, bucket_name=bucket)
     stock_fundamentals_df = extract_stock_fundamentals(tickers, bucket_name=bucket)
     stock_dividends_df = extract_stock_dividends(tickers)
     # SG Exchange Rates
     sg_exchange_rates = extract_exchange_rates(bucket_name=bucket)
-    # Commodities
-    commodities_df = extract_commodities(bucket_name=bucket) 
     # SG Interest Rates
-    sg_ir_df = extract_sg_ir(bucket_name='is3107_bucket_test')
-    # US Yields
-    us_yields = extract_us_yields(bucket_name='is3107_bucket_test')
+    sg_ir_df = extract_sg_ir(bucket_name=bucket)
     # TA for Prices
-    ta_data = transform_prices_ta(tickers, bucket, price_df)
-    check_bucket >> [price_df, sg_exchange_rates, commodities_df, sg_ir_df, us_yields, stock_info_df, stock_fundamentals_df, stock_dividends_df] 
-    tickers >> price_df >> ta_data
+    #ta_data = transform_prices_ta(tickers, bucket, price_df)
+    check_bucket >> [price_df, sg_exchange_rates, sg_ir_df, stock_info_df, stock_fundamentals_df, stock_dividends_df] 
+    #tickers >> price_df >> ta_data

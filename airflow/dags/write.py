@@ -39,12 +39,10 @@ def write_to_gcs_task_group():
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_cloud_path
 
     tasks_ids_csvs = {
-        'extract_stock_prices': 'prices',
-        'extract_stock_ta': 'ta_prices',
+        'extract_all_prices': 'prices',
+        #'extract_all_ta': 'ta_prices',
         'extract_exchange_rates': 'exchange_rates',
-        'extract_commodities': 'commodities',
         'extract_sg_ir': 'sg_ir',
-        'extract_us_yields': 'us_yields',
         'extract_stock_info': 'stock_info',
         'extract_stock_fundamentals': 'stock_fundamentals',
         'extract_stock_dividends': 'stock_dividends'

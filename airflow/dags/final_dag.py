@@ -4,7 +4,8 @@ import pendulum
 from extract import extract_data_task_group
 from write import write_to_gcs_task_group
 from staging import gcs_to_staging_task_group
-from transform_load_dwh import transform_load_dwh_task_group
+from transformation import transform_task_group
+from load import load_dwh_task_group
 from airflow.operators.dummy import DummyOperator
 
 @dag(
@@ -26,10 +27,13 @@ def final_dag():
     with TaskGroup("gcs_to_staging", prefix_group_id=False) as section_3:
         gcs_to_staging_task_group()
 
-    with TaskGroup("transform_load_dwh", prefix_group_id=False) as section_4:
-        transform_load_dwh_task_group()
+    with TaskGroup("transformation", prefix_group_id=False) as section_4:
+        transform_task_group()
+
+    with TaskGroup("load_dwh", prefix_group_id=False) as section_5:
+        load_dwh_task_group()
 
     end = DummyOperator(task_id='end')
 
-    start >> section_1 >> section_2 >> section_3 >> section_4 >> end
+    start >> section_1 >> section_2 >> section_3 >> section_4 >> section_5 >> end
 final = final_dag()
