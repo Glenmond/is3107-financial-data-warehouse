@@ -3,19 +3,13 @@ from airflow.providers.google.cloud.operators.bigquery import BigQueryExecuteQue
 #from airflow.providers.google.cloud.operators.bigquery import .BigQueryCheckOperator
 from google.oauth2 import service_account
 import os
-from params import google_cloud_path
+from params import google_cloud_path, staging_dataset, project_id
 import pandas as pd
 import talib as tb
 from airflow.decorators import task
 import pandas_gbq
 from google.cloud import bigquery
 import os
-
-# Define dag variables
-project_id = 'test-344015'
-staging_source_dataset = 'TEST_DWH_STAGING'
-staging_destination_dataset = 'TEST_DWH_STAGING'
-gs_bucket = 'is3107_bucket_test'
 
 def transform_task_group():
     def get_client(project_id, service_account):
@@ -130,8 +124,8 @@ def transform_task_group():
         use_legacy_sql = False,
         params = {
             'project_id': project_id,
-            'staging_source_dataset': staging_source_dataset,
-            'staging_destination_dataset': staging_destination_dataset
+            'staging_source_dataset': staging_dataset,
+            'staging_destination_dataset': staging_dataset
         },
         sql = './sql/S_EXCHANGE_RATE.sql'
     )
@@ -141,8 +135,8 @@ def transform_task_group():
         use_legacy_sql = False,
         params = {
             'project_id': project_id,
-            'staging_source_dataset': staging_source_dataset,
-            'staging_destination_dataset': staging_destination_dataset
+            'staging_source_dataset': staging_dataset,
+            'staging_destination_dataset': staging_dataset
         },
         sql = './sql/S_ALL_PRICE.sql'
     )
@@ -152,8 +146,8 @@ def transform_task_group():
         use_legacy_sql = False,
         params = {
             'project_id': project_id,
-            'staging_source_dataset': staging_source_dataset,
-            'staging_destination_dataset': staging_destination_dataset
+            'staging_source_dataset': staging_dataset,
+            'staging_destination_dataset': staging_dataset
         },
         sql = './sql/S_STOCK_FUNDAMENTALS.sql'
     )
@@ -163,8 +157,8 @@ def transform_task_group():
         use_legacy_sql = False,
         params = {
             'project_id': project_id,
-            'staging_source_dataset': staging_source_dataset,
-            'staging_destination_dataset': staging_destination_dataset
+            'staging_source_dataset': staging_dataset,
+            'staging_destination_dataset': staging_dataset
         },
         sql = './sql/S_STOCK_INFO.sql'
     )
@@ -174,8 +168,8 @@ def transform_task_group():
         use_legacy_sql = False,
         params = {
             'project_id': project_id,
-            'staging_source_dataset': staging_source_dataset,
-            'staging_destination_dataset': staging_destination_dataset
+            'staging_source_dataset': staging_dataset,
+            'staging_destination_dataset': staging_dataset
         },
         sql = './sql/S_STOCK_DIVIDENDS.sql'
     )
@@ -185,10 +179,10 @@ def transform_task_group():
         use_legacy_sql = False,
         params = {
             'project_id': project_id,
-            'staging_source_dataset': staging_source_dataset,
-            'staging_destination_dataset': staging_destination_dataset
+            'staging_source_dataset': staging_dataset,
+            'staging_destination_dataset': staging_dataset
         },
         sql = './sql/S_SG_IR.sql'
     )
     
-    transform_prices_to_ta_ = transform_prices_to_ta(project_id, staging_source_dataset, 'PRICE_STAGING', 'S_ALL_TA')
+    transform_prices_to_ta_ = transform_prices_to_ta(project_id, staging_dataset, 'PRICE_STAGING', 'S_ALL_TA')

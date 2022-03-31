@@ -2,20 +2,12 @@
 from airflow.providers.google.cloud.operators.bigquery import BigQueryExecuteQueryOperator
 from airflow.decorators import task
 import os
-from params import google_cloud_path
-
-# Define dag variables
-project_id = 'test-344015'
-staging_dataset = 'TEST_DWH_STAGING'
-dwh_dataset = 'TEST_DWH'
-gs_bucket = 'is3107_bucket_test'
-
+from params import google_cloud_path, project_id, dwh_dataset, staging_dataset
 import staging_schema as ss
 from google.cloud import bigquery
 from google.oauth2 import service_account
 from google.cloud import exceptions
 import os
-import argparse
 import logging
 from params import google_cloud_path
 logging.basicConfig(level=logging.INFO)

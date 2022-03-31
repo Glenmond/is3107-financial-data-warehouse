@@ -2,7 +2,7 @@ from requests import get
 import pandas as pd
 import yfinance as yf
 import talib as tb
-from airflow.decorators import task, task_group
+from airflow.decorators import task
 from google.cloud import storage
 import os
 from params import google_cloud_path

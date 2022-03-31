@@ -1,4 +1,4 @@
-from airflow.decorators import dag, task
+from airflow.decorators import dag
 from airflow.utils.task_group import TaskGroup
 import pendulum
 from extract import extract_data_task_group
