@@ -116,9 +116,57 @@ def transform_task_group():
                     )
         data['Date'] = pd.to_datetime(data['Date'])
         return pandas_gbq.to_gbq(data, f'{dataset_name}.{destination_table_name}', project_id=f'{project_id}', credentials=credentials, if_exists='replace')    
+    
+    @task(task_id='transform_esg_score')
+    def transform_esg_score(project_id, dataset_name, target_table_name, destination_table_name):
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_cloud_path
+        # Get client
+        client = get_client(project_id, '')
+        query_job = client.query(
+            f"""
+            SELECT
+            *
+            FROM `{project_id}.{dataset_name}.{target_table_name}`
+            """
+        )
 
+        df_final = query_job.result().to_dataframe()
+        df_final = df_final.iloc[: , 1:]
+        #sti_tickers = scrape_sti_tickers()
+        #tickers_list = [*sti_tickers.keys()]
+        df_final['newMarketCap'] = df_final['previousClose'] * df_final['sharesOutstanding']
+        total_index_mcap = df_final['newMarketCap'].sum()
+        df_final['marketWeight'] = (df_final['newMarketCap']/total_index_mcap)*100
+        #empty df
+        final_esg_df = pd.DataFrame()
+        #getting list of sectors in index
+        sector_list = df_final['sector'].unique().tolist()
+
+        #looping over each sector and apply .mean to calculate average
+        for sector in sector_list:
+            sector_df = df_final[df_final['sector'] == sector]
+            sector_df['socialScore'].fillna(round(sector_df['socialScore'].mean(),2), inplace=True)
+            sector_df['governanceScore'].fillna(round(sector_df['governanceScore'].mean(),2), inplace=True)
+            sector_df['totalEsg'].fillna(round(sector_df['totalEsg'].mean(),2), inplace=True)
+            sector_df['environmentScore'].fillna(round(sector_df['environmentScore'].mean(),2), inplace=True)
+
+            final_esg_df = final_esg_df.append(sector_df)
+
+        #also adding the weighted average columns into this new final_esg_df
+        final_esg_df['mktweightedEsg'] = (final_esg_df['marketWeight'] * final_esg_df['totalEsg'])/100
+        final_esg_df['mktweightedEnvScore'] = (final_esg_df['marketWeight'] * final_esg_df['environmentScore'])/100
+        final_esg_df['mktweightedSocScore'] = (final_esg_df['marketWeight'] * final_esg_df['socialScore'])/100
+        final_esg_df['mktweightedGovScore'] = (final_esg_df['marketWeight'] * final_esg_df['governanceScore'])/100
+        
+        final_esg_df = final_esg_df.reset_index(drop=True)
+        credentials = service_account.Credentials.from_service_account_file(
+                        google_cloud_path,
+                    )
+        return pandas_gbq.to_gbq(final_esg_df, f'{dataset_name}.{destination_table_name}', project_id=f'{project_id}', credentials=credentials, if_exists='replace')    
+    
     # Transform Big Query
     # Create remaining dimensions data
+
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_cloud_path
     transform_exchange_rate = BigQueryExecuteQueryOperator(
         task_id = 'transform_exchange_rate',
@@ -185,5 +233,17 @@ def transform_task_group():
         },
         sql = './sql/S_SG_IR.sql'
     )
+
+    transform_fear_greed_index = BigQueryExecuteQueryOperator(
+        task_id = 'transform_fear_greed_index',
+        use_legacy_sql = False,
+        params = {
+            'project_id': project_id,
+            'staging_source_dataset': staging_dataset,
+            'staging_destination_dataset': staging_dataset
+        },
+        sql = './sql/S_FEAR_GREED_INDEX.sql'
+    )
     
     transform_prices_to_ta_ = transform_prices_to_ta(project_id, staging_dataset, 'PRICE_STAGING', 'S_ALL_TA')
+    transform_esg = transform_esg_score(project_id, staging_dataset, 'ESG_SCORE_STAGING', 'S_ESG_SCORE')

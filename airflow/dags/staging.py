@@ -123,5 +123,26 @@ def gcs_to_staging_task_group():
         skip_leading_rows = 1
     )
 
+    load_fear_greed_index = GCSToBigQueryOperator(
+        task_id = 'load_fear_greed_index',
+        bucket = gs_bucket,
+        source_objects = ['fear_greed_index.csv'],
+        destination_project_dataset_table = f'{project_id}:{staging_dataset}.FEAR_GREED_INDEX_STAGING',
+        write_disposition='WRITE_TRUNCATE',
+        source_format = 'csv',
+        skip_leading_rows = 1
+    )
+
+    load_esg_score = GCSToBigQueryOperator(
+        task_id = 'load_esg_score',
+        bucket = gs_bucket,
+        source_objects = ['esg_score.csv'],
+        destination_project_dataset_table = f'{project_id}:{staging_dataset}.ESG_SCORE_STAGING',
+        write_disposition='WRITE_TRUNCATE',
+        source_format = 'csv',
+        skip_leading_rows = 1
+    )
+
+
     staging_exists = check_staging_exists(project_id, staging_dataset)
-    staging_exists >> [load_prices, load_sg_ir, load_exchange_rate, load_stock_info, load_stock_fundamentals, load_stock_dividends]
+    staging_exists >> [load_prices, load_sg_ir, load_exchange_rate, load_stock_info, load_stock_fundamentals, load_stock_dividends, load_fear_greed_index, load_esg_score]

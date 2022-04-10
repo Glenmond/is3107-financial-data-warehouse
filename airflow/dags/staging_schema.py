@@ -1,6 +1,6 @@
 from google.cloud.bigquery import SchemaField 
 
-tables = ['EXCHANGE_RATE', 'SG_IR', 'STOCK_FUNDAMENTALS', 'STOCK_INFO', 'STOCK_DIVIDENDS', 'ALL_PRICE', 'ALL_TA', 'STOCK_QUERY']
+tables = ['EXCHANGE_RATE', 'SG_IR', 'STOCK_FUNDAMENTALS', 'STOCK_INFO', 'STOCK_DIVIDENDS', 'ALL_PRICE', 'ALL_TA', 'STOCK_QUERY', 'FEAR_GREED_INDEX', 'ESG_SCORE']
 
 
 EXCHANGE_RATE = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
@@ -81,4 +81,20 @@ STOCK_QUERY = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
 ,SchemaField('PE_Ratio', 'FLOAT', 'NULLABLE', None, ())
 ,SchemaField('Sora', 'FLOAT', 'NULLABLE', None, ())
 ,SchemaField('Dividends', 'FLOAT', 'NULLABLE', None, ())
+,]
+
+FEAR_GREED_INDEX = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
+,SchemaField('Access_Time', 'DATE', 'NULLABLE', None, ())
+,SchemaField('FG_Value', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('FG_Textvalue', 'STRING', 'NULLABLE', None, ())
+,SchemaField('FG_Close', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('FG_Closetext', 'STRING', 'NULLABLE', None, ())
+,]
+
+ESG_SCORE = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
+,SchemaField('Ticker_id', 'STRING', 'NULLABLE', None, ())
+,SchemaField('Social_score', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Governance_score', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Environment_score', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Total_ESG', 'FLOAT', 'NULLABLE', None, ())
 ,]

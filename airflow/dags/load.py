@@ -160,6 +160,31 @@ def load_dwh_task_group():
         '''
     )
 
+    distinct_fear_greed_index = BigQueryExecuteQueryOperator(
+        task_id='distinct_fear_greed_index',
+        use_legacy_sql=False,
+        write_disposition='WRITE_TRUNCATE',
+        sql=f'''
+        CREATE OR REPLACE TABLE `{project_id}.{dwh_dataset}.D_FEAR_GREED_INDEX` AS
+        SELECT DISTINCT *
+        FROM
+        `{project_id}.{staging_dataset}.S_FEAR_GREED_INDEX`
+        '''
+    )
+
+    distinct_esg_score = BigQueryExecuteQueryOperator(
+        task_id='distinct_esg_score',
+        use_legacy_sql=False,
+        write_disposition='WRITE_APPEND',
+        sql=f'''
+        INSERT `{project_id}.{dwh_dataset}.D_ESG_SCORE`
+        SELECT DISTINCT CAST(Date as Date) AS Date, symbol, mktweightedSocScore, mktweightedGovScore, mktweightedEnvScore, mktweightedEsg
+        FROM
+        `{project_id}.{staging_dataset}.S_ESG_SCORE`
+        '''
+    )
+    
+
     build_fact_table = BigQueryExecuteQueryOperator(
         task_id = 'build_fact_table',
         use_legacy_sql = False,
@@ -171,5 +196,5 @@ def load_dwh_task_group():
     )
 
     check_dwh_exists = check_dwh_tables_exists(project_id, dwh_dataset)
-    check_dwh_exists >> [distinct_all_prices, distinct_all_ta, distinct_exchange_rate, distinct_sg_ir, distinct_stock_dividends, distinct_stock_fundamentals, distinct_stock_info]
-    [distinct_all_prices, distinct_all_ta, distinct_exchange_rate, distinct_sg_ir, distinct_stock_dividends, distinct_stock_fundamentals, distinct_stock_info] >> build_fact_table
+    check_dwh_exists >> [distinct_all_prices, distinct_all_ta, distinct_exchange_rate, distinct_sg_ir, distinct_stock_dividends, distinct_stock_fundamentals, distinct_stock_info, distinct_fear_greed_index, distinct_esg_score]
+    [distinct_all_prices, distinct_all_ta, distinct_exchange_rate, distinct_sg_ir, distinct_stock_dividends, distinct_stock_fundamentals, distinct_stock_info, distinct_fear_greed_index, distinct_esg_score] >> build_fact_table

@@ -1,7 +1,7 @@
 from asyncore import write
 from airflow.operators.python import PythonOperator
 from google.cloud import storage
-from params import google_cloud_path
+from params import google_cloud_path, gs_bucket
 import os
 
 
@@ -33,7 +33,7 @@ def write_to_gcs_task_group():
             print(kwargs)
             return
             
-    bucket = 'is3107_bucket_test'
+    bucket = gs_bucket
     # Laod to GCS
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_cloud_path
 
@@ -44,7 +44,10 @@ def write_to_gcs_task_group():
         'extract_sg_ir': 'sg_ir',
         'extract_stock_info': 'stock_info',
         'extract_stock_fundamentals': 'stock_fundamentals',
-        'extract_stock_dividends': 'stock_dividends'
+        'extract_stock_dividends': 'stock_dividends',
+        'extract_fear_greed_index': 'fear_greed_index',
+        'extract_esg_score': 'esg_score'
     }
+
     for key, value in tasks_ids_csvs.items():
         PythonOperator(task_id=f'write_to_gcs_{value}', python_callable=write_to_gcs, op_kwargs={'extract_task_id': key, 'bucket_name': bucket, 'csv_name': value})

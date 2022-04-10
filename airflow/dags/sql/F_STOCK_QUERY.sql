@@ -11,7 +11,9 @@ si.Stock_summary as Description,
 sf.Return_on_equity as ROE,
 sf.Price_earning_ratio as PE_RATIO,
 sgir.sora as Sora,
-div.Dividends as Dividends
+div.Dividends as Dividends,
+fgi.FG_Value as Fear_Greed_Value,
+esg.Total_ESG as ESG_Score
  FROM `{{ params.project_id }}.{{ params.dwh_dataset }}.D_ALL_PRICE` ps 
  LEFT JOIN `{{ params.project_id }}.{{ params.dwh_dataset }}.D_STOCK_INFO` si 
  ON ps.Ticker_id = si.Ticker_id
@@ -21,5 +23,9 @@ div.Dividends as Dividends
  ON ps.Date = sgir.Date 
  LEFT JOIN `{{ params.project_id }}.{{ params.dwh_dataset }}.D_STOCK_DIVIDENDS` div
  ON ps.Date = div.Date and ps.Ticker_id = div.Ticker
+ LEFT JOIN `{{ params.project_id }}.{{ params.dwh_dataset }}.D_FEAR_GREED_INDEX` fgi
+ ON ps.Date = fgi.Date
+ LEFT JOIN `{{ params.project_id }}.{{ params.dwh_dataset }}.D_ESG_SCORE` esg 
+ ON ps.Ticker_id = esg.Ticker_id and ps.Date = esg.Date
  ORDER BY 
  Date DESC, Ticker ASC

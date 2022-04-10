@@ -5,9 +5,14 @@ import talib as tb
 from airflow.decorators import task
 from google.cloud import storage
 import os
-from params import google_cloud_path
+from params import google_cloud_path, gs_bucket
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+
+from bs4 import BeautifulSoup
+import random
+import requests
+import io
 
 
 def get_adj_close(tickers, start_date, end_date):
@@ -40,6 +45,74 @@ def blob_exists(bucket_name, filename):
     bucket = client.get_bucket(bucket_name)
     blob = bucket.blob(filename)
     return blob.exists()
+
+def blob_download_to_df(bucket_name, filename):
+    client = storage.Client()
+    bucket = client.get_bucket(bucket_name)
+    blob = bucket.blob(filename)
+    data = blob.download_as_string()
+    df = pd.read_csv(io.BytesIO(data))
+    return df
+
+def _get_user_agent() -> str:
+    """Get a random User-Agent strings from a list of some recent real browsers
+    Parameters
+    ----------
+    None
+    Returns
+    -------
+    str
+        random User-Agent strings
+    """
+    user_agent_strings = [
+        "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.10; rv:86.1) Gecko/20100101 Firefox/86.1",
+        "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:86.1) Gecko/20100101 Firefox/86.1",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:82.1) Gecko/20100101 Firefox/82.1",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:86.0) Gecko/20100101 Firefox/86.0",
+        "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:86.0) Gecko/20100101 Firefox/86.0",
+        "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.10; rv:83.0) Gecko/20100101 Firefox/83.0",
+        "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:84.0) Gecko/20100101 Firefox/84.0",
+    ]
+
+    return random.choice(user_agent_strings)
+
+def _get_html(url: str):
+    """Wraps HTTP requests.get for testibility.
+    Fake the user agent by changing the User-Agent header of the request
+    and bypass such User-Agent based blocking scripts used by websites.
+    Parameters
+    ----------
+    url : str
+        HTML page URL
+    Returns
+    -------
+    str
+        HTML page
+    """
+    return requests.get(url, headers={"User-Agent": _get_user_agent()}).text
+
+def split_fear_gread_web_text_to_dataframe(str1):
+    tmp1 = str1.split(")")
+    list1 = []
+    for i in tmp1:
+        list1.extend(i.split(":"))
+    list2 = []
+    for j in list1:
+        list2.extend(j.split("("))
+    list2 = list2[:-1]
+    for j in range(len(list2)):
+        list2[j] = list2[j].replace("Fear & Greed", "").strip()
+    time_list = []
+    value_list = []
+    text_list = []
+    for i in range(len(list2)):
+        if i % 3 == 0: time_list.append(list2[i])
+        elif i % 3 == 1: value_list.append(list2[i])
+        else: text_list.append(list2[i])
+
+    df = pd.DataFrame({"Time":time_list, "FG_Value":value_list, "FG_Textvalue":text_list})
+    return df
+
 
 def extract_data_task_group():
     """
@@ -261,8 +334,106 @@ def extract_data_task_group():
         data = data.reset_index(drop=True)
         return data
 
+    @task(task_id='extract_fear_greed_index')
+    def extract_fear_greed_index(bucket_name):
+        #If the file exits, then get historical data, if not then start with empty df
+        if blob_exists(bucket_name, 'fear_greed_index.csv'):
+            fear_greed_index = blob_download_to_df(bucket_name, 'fear_greed_index.csv')
+            fear_greed_index = fear_greed_index.iloc[: , 1:]
+        else: 
+            fear_greed_index = pd.DataFrame()
+        
+        """Scrapes CNN Fear and Greed Index HTML page
+            Parameters
+            ----------
+            None
+            Returns
+            -------
+            BeautifulSoup
+            CNN Fear And Greed Index HTML page
+        """
+        #fear_greed_index = pd.DataFrame()
+        #Scrape data from webpage
+        text_soup_cnn = BeautifulSoup(
+            _get_html("https://money.cnn.com/data/fear-and-greed/"),
+            "lxml",
+        )
+
+        # Extract in fear and greed index
+        index_data = (
+            text_soup_cnn.findAll("div", {"class": "modContent feargreed"})[0]
+            .contents[0]
+            .text
+        )
+        
+        #Format web data into dataframe
+        dt_string = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        transformed_df = split_fear_gread_web_text_to_dataframe(index_data)
+        daily_data_df = transformed_df.iloc[0:1]
+        today_date = datetime.today().strftime("%Y-%m-%d")
+        daily_data_df.insert(0, "Date", today_date, True)
+        daily_data_df['Access_Time'] = [dt_string]
+        prev_close = transformed_df._get_value(1, 'FG_Value')
+        daily_data_df['FG_Close'] = [prev_close]
+        prev_close_text = transformed_df._get_value(1, 'FG_Textvalue')
+        daily_data_df['FG_Closetext'] = [prev_close_text]
+
+        #Get all fear_greed_index data
+        fear_greed_index = fear_greed_index.append(daily_data_df, ignore_index=True)
+
+        return fear_greed_index
+
+    @task(task_id='extract_esg_score')
+    def extract_esg_score(sti_tickers, bucket_name):
+        today_date = datetime.today().strftime("%Y-%m-%d")
+        #get historical data on the gcs
+        if blob_exists(bucket_name, 'esg_score.csv'):
+            esg_final = blob_download_to_df(bucket_name, 'esg_score.csv')
+            esg_final = esg_final.iloc[: , 1:]
+        else: 
+            esg_final = pd.DataFrame()
+        
+        #only extract when there is no historical value or today's data is not updated 
+        if esg_final.empty or (esg_final.empty is False and today_date in esg_final['Date'].values is False):
+            tickers_list = [*sti_tickers.keys()]
+            main_df = pd.DataFrame()
+            esg_data = pd.DataFrame()
+            for ticker in tickers_list:
+                try:
+                    ticker_name = yf.Ticker(ticker)
+                    ticker_info = ticker_name.info
+                    ticker_df = pd.DataFrame.from_dict(ticker_info.items()).T
+                    #the above line will parse the dict response into a DataFrame
+                    ticker_df.columns = ticker_df.iloc[0]
+                    #above line will rename all columns to first row of dataframe
+                    #as all the headers come up in the 1st row, next line will drop the 1st line
+                    ticker_df = ticker_df.drop(ticker_df.index[0])
+                    main_df = main_df.append(ticker_df)
+                    #if no response from Yahoo received, it will pass to next ticker
+                    if ticker_name.sustainability is not None: 
+                        #response dataframe
+                        ticker_df_esg = ticker_name.sustainability.T 
+                        #adding new column 'symbol' in response df
+                        ticker_df_esg['symbol'] = ticker 
+                        #attaching the response df to esg_data
+                        esg_data = esg_data.append(ticker_df_esg) 
+                #in case yfinance API misbehaves
+                except (IndexError, ValueError) as e: 
+                    print(e)
+            main_df = main_df[['symbol', 'sector', 'previousClose', 'sharesOutstanding']]
+            esg_data = esg_data[['symbol', 'socialScore', 'governanceScore', 'totalEsg', 'environmentScore']]
+            final_df = main_df.merge(esg_data, how='left', on='symbol')
+            final_df.insert(0, "Date", today_date, True)
+        # no need to extract data
+        else: 
+            final_df = pd.DataFrame()
+
+        #Add today's data to historical data on gcs
+        esg_final_df = esg_final.append(final_df, ignore_index=True)
+        return esg_final_df
+    
     # Run Tasks 
-    bucket = 'is3107_bucket_test'
+    bucket = gs_bucket
     # Set Credentials
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_cloud_path
     # Check if Bucket Exists
@@ -281,5 +452,8 @@ def extract_data_task_group():
     sg_ir_df = extract_sg_ir(bucket_name=bucket)
     # TA for Prices
     #ta_data = transform_prices_ta(tickers, bucket, price_df)
-    check_bucket >> [price_df, sg_exchange_rates, sg_ir_df, stock_info_df, stock_fundamentals_df, stock_dividends_df] 
+    # Fear and Greed Index 
+    fear_greed_index_df = extract_fear_greed_index(bucket_name=bucket)
+    esg_score_df = extract_esg_score(tickers,  bucket_name=bucket)
+    check_bucket >> [price_df, sg_exchange_rates, sg_ir_df, stock_info_df, stock_fundamentals_df, stock_dividends_df, fear_greed_index_df, esg_score_df] 
     #tickers >> price_df >> ta_data
