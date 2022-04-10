@@ -1,6 +1,6 @@
 from google.cloud.bigquery import SchemaField 
 
-tables = ['EXCHANGE_RATE', 'SG_IR', 'STOCK_FUNDAMENTALS', 'STOCK_INFO', 'STOCK_DIVIDENDS', 'ALL_PRICE', 'ALL_TA', 'STOCK_QUERY', 'FEAR_GREED_INDEX', 'ESG_SCORE']
+tables = ['EXCHANGE_RATE', 'SG_IR', 'STOCK_FUNDAMENTALS', 'STOCK_INFO', 'STOCK_DIVIDENDS', 'ALL_PRICE', 'ALL_TA', 'STOCK_QUERY', 'FEAR_GREED_INDEX', 'ESG_SCORE', 'FOMC', 'NEWS_SOURCES', 'NEWS_VOL_SPIKES']
 
 
 EXCHANGE_RATE = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
@@ -97,4 +97,40 @@ ESG_SCORE = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
 ,SchemaField('Governance_score', 'FLOAT', 'NULLABLE', None, ())
 ,SchemaField('Environment_score', 'FLOAT', 'NULLABLE', None, ())
 ,SchemaField('Total_ESG', 'FLOAT', 'NULLABLE', None, ())
+,]
+
+# FOMC = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
+# ,SchemaField('Score_Statement_ML', 'FLOAT', 'NULLABLE', None, ())
+# ,SchemaField('Score_Statment_DB', 'FLOAT', 'NULLABLE', None, ())
+# ,SchemaField('Score_Minutes_ML', 'FLOAT', 'NULLABLE', None, ())
+# ,SchemaField('Score_Minutes_DB', 'FLOAT', 'NULLABLE', None, ())
+# ,]
+
+FOMC = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
+,SchemaField('Score_Statment_DB', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Score_Minutes_DB', 'FLOAT', 'NULLABLE', None, ())
+,]
+
+NEWS_SOURCES = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
+,SchemaField('Ticker_id', 'STRING', 'NULLABLE', None, ())
+,SchemaField('Country_code', 'STRING', 'NULLABLE', None, ())
+,SchemaField('Event_sentiment_score', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Topic', 'STRING', 'NULLABLE', None, ())
+,SchemaField('Event_type', 'STRING', 'NULLABLE', None, ())
+,SchemaField('Category', 'STRING', 'NULLABLE', None, ())
+,SchemaField('Event_text', 'STRING', 'NULLABLE', None, ())
+,SchemaField('News_type', 'STRING', 'NULLABLE', None, ())
+,SchemaField('Source_name', 'STRING', 'NULLABLE', None, ())
+,SchemaField('Headline', 'STRING', 'NULLABLE', None, ())
+,]
+
+NEWS_VOL_SPIKES = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
+,SchemaField('Ticker_id', 'STRING', 'NULLABLE', None, ())
+,SchemaField('News_spikes_w', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('News_spikes_m', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Avg_ess', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Avg_ess_w', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Avg_ess_m', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Avg_str_ess_w', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Avg_str_ess_m', 'FLOAT', 'NULLABLE', None, ())
 ,]

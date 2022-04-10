@@ -14,6 +14,14 @@ import random
 import requests
 import io
 
+try:
+    from fomc.FomcStatement import FomcStatement
+    from fomc.FomcMinutes import FomcMinutes
+    from news.News import News
+except ModuleNotFoundError: 
+    from .fomc.FomcStatement import FomcStatement
+    from .fomc.FomcMinutes import FomcMinutes
+    from .news.News import News
 
 def get_adj_close(tickers, start_date, end_date):
     returns_df = pd.DataFrame(columns=['Ticker', 'High', 'Low', 'Open', 'Close', 'Volume', 'Adj Close'])
@@ -432,6 +440,71 @@ def extract_data_task_group():
         esg_final_df = esg_final.append(final_df, ignore_index=True)
         return esg_final_df
     
+    @task(task_id='extract_fomc_statement')
+    def extract_fomc_statement(bucket_name):
+        """
+        Return FOMC Statement Data
+        """
+        if blob_exists(bucket_name, 'fomc_statement.csv'):
+            from_year = int((datetime.today()- relativedelta(months=3)).strftime("%Y"))
+        else:    
+            from_year = int((datetime.today()- relativedelta(months=6)).strftime("%Y"))
+
+        fomc = FomcStatement()
+        df = fomc.get_contents(from_year)
+
+        return df
+        
+    @task(task_id='extract_fomc_minutes')
+    def extract_fomc_minutes(bucket_name):
+        """
+        Return FOMC Minutes Data
+        """
+        if blob_exists(bucket_name, 'fomc_minutes.csv'):
+            from_year = int((datetime.today()- relativedelta(months=3)).strftime("%Y"))
+        else:    
+            from_year = int((datetime.today()- relativedelta(months=6)).strftime("%Y"))
+        
+        fomc = FomcMinutes()
+        df = fomc.get_contents(from_year)
+
+        return df
+
+    @task(task_id='extract_news_sources')
+    def extract_news_sources(bucket_name):
+        """
+        Return RavenPack News Headline + Sentiment Data
+        """
+        if blob_exists(bucket_name, 'news_sources.csv'):
+            start_date = (datetime.today()- relativedelta(months=1)).strftime("%Y-%m-%d") 
+            end_date = datetime.today().strftime("%Y-%m-%d") 
+        else:    
+            start_date = (datetime.today()- relativedelta(months=2)).strftime("%Y-%m-%d") 
+            end_date = datetime.today().strftime("%Y-%m-%d")
+
+        news = News(False)
+        news_sources_df = news.get_contents(start_date, end_date)
+
+        return news_sources_df
+    
+    @task(task_id='extract_news_volume_spikes')
+    def extract_news_volume_spikes(bucket_name):
+        """
+        Return RavenPack News Volume Spikes
+        """
+        if blob_exists(bucket_name, 'news_volume_spikes.csv'):
+            start_date = (datetime.today()- relativedelta(months=1)).strftime("%Y-%m-%d") 
+            end_date = datetime.today().strftime("%Y-%m-%d") 
+        else:    
+            start_date = (datetime.today()- relativedelta(months=2)).strftime("%Y-%m-%d") 
+            end_date = datetime.today().strftime("%Y-%m-%d")
+
+        news = News(True)
+        news_volume_spikes_df = news.get_contents(start_date, end_date)
+
+        return news_volume_spikes_df
+
+
     # Run Tasks 
     bucket = gs_bucket
     # Set Credentials
@@ -455,5 +528,12 @@ def extract_data_task_group():
     # Fear and Greed Index 
     fear_greed_index_df = extract_fear_greed_index(bucket_name=bucket)
     esg_score_df = extract_esg_score(tickers,  bucket_name=bucket)
-    check_bucket >> [price_df, sg_exchange_rates, sg_ir_df, stock_info_df, stock_fundamentals_df, stock_dividends_df, fear_greed_index_df, esg_score_df] 
+    # FOMC Minutes + Statements
+    fomc_st_df = extract_fomc_statement(bucket_name=bucket)
+    fomc_min_df = extract_fomc_minutes(bucket_name=bucket)
+    # News
+    news_sources_df = extract_news_sources(bucket_name=bucket)
+    news_volume_spikes_df = extract_news_volume_spikes(bucket_name=bucket)
+
+    check_bucket >> [price_df, sg_exchange_rates, sg_ir_df, stock_info_df, stock_fundamentals_df, stock_dividends_df, fear_greed_index_df, esg_score_df, news_sources_df, news_volume_spikes_df, fomc_st_df, fomc_min_df] 
     #tickers >> price_df >> ta_data

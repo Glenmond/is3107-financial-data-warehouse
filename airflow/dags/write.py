@@ -46,7 +46,11 @@ def write_to_gcs_task_group():
         'extract_stock_fundamentals': 'stock_fundamentals',
         'extract_stock_dividends': 'stock_dividends',
         'extract_fear_greed_index': 'fear_greed_index',
-        'extract_esg_score': 'esg_score'
+        'extract_esg_score': 'esg_score',
+        'extract_fomc_statement': 'fomc_statement',
+        'extract_fomc_minutes': 'fomc_minutes',
+        'extract_news_sources': 'news_sources',
+        'extract_news_volume_spikes': 'news_volume_spikes'
     }
 
     for key, value in tasks_ids_csvs.items():

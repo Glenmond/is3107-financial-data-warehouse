@@ -142,7 +142,47 @@ def gcs_to_staging_task_group():
         source_format = 'csv',
         skip_leading_rows = 1
     )
+    load_fomc_statement = GCSToBigQueryOperator(
+        task_id = 'load_fomc_statement',
+        bucket = gs_bucket,
+        source_objects = ['fomc_statement.csv'],
+        destination_project_dataset_table = f'{project_id}:{staging_dataset}.FOMC_STATEMENT_STAGING',
+        write_disposition='WRITE_TRUNCATE',
+        source_format = 'csv',
+        skip_leading_rows = 1,
+        allow_quoted_newlines=True
+    )
 
+    load_fomc_minutes = GCSToBigQueryOperator(
+        task_id = 'load_fomc_minutes',
+        bucket = gs_bucket,
+        source_objects = ['fomc_minutes.csv'],
+        destination_project_dataset_table = f'{project_id}:{staging_dataset}.FOMC_MINUTES_STAGING',
+        write_disposition='WRITE_TRUNCATE',
+        source_format = 'csv',
+        skip_leading_rows = 1,
+        allow_quoted_newlines=True
+    )
+
+    load_news_sources = GCSToBigQueryOperator(
+        task_id = 'load_news_sources',
+        bucket = gs_bucket,
+        source_objects = ['news_sources.csv'],
+        destination_project_dataset_table = f'{project_id}:{staging_dataset}.NEWS_SOURCES_STAGING',
+        write_disposition='WRITE_TRUNCATE',
+        source_format = 'csv',
+        skip_leading_rows = 1
+    )
+
+    load_news_volume_spikes = GCSToBigQueryOperator(
+        task_id = 'load_news_volume_spikes',
+        bucket = gs_bucket,
+        source_objects = ['news_volume_spikes.csv'],
+        destination_project_dataset_table = f'{project_id}:{staging_dataset}.NEWS_VOLUME_SPIKES_STAGING',
+        write_disposition='WRITE_TRUNCATE',
+        source_format = 'csv',
+        skip_leading_rows = 1
+    )
 
     staging_exists = check_staging_exists(project_id, staging_dataset)
-    staging_exists >> [load_prices, load_sg_ir, load_exchange_rate, load_stock_info, load_stock_fundamentals, load_stock_dividends, load_fear_greed_index, load_esg_score]
+    staging_exists >> [load_prices, load_sg_ir, load_exchange_rate, load_stock_info, load_stock_fundamentals, load_stock_dividends, load_fear_greed_index, load_esg_score, load_fomc_statement, load_fomc_minutes, load_news_sources, load_news_volume_spikes]

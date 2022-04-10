@@ -183,8 +183,55 @@ def load_dwh_task_group():
         `{project_id}.{staging_dataset}.S_ESG_SCORE`
         '''
     )
-    
 
+    distinct_fomc = BigQueryExecuteQueryOperator(
+        task_id='distinct_fomc',
+        use_legacy_sql=False,
+        write_disposition='WRITE_APPEND',
+        sql=f'''
+        INSERT `{project_id}.{dwh_dataset}.D_FOMC`
+        SELECT CAST(Date as Date), Score_Statement_DB, Score_Minutes_DB
+        FROM
+        `{project_id}.{staging_dataset}.S_FOMC`
+        '''
+    )
+
+    # distinct_fomc = BigQueryExecuteQueryOperator(
+    #     task_id='distinct_fomc',
+    #     use_legacy_sql=False,
+    #     write_disposition='WRITE_APPEND',
+    #     sql=f'''
+    #     INSERT `{project_id}.{dwh_dataset}.D_FOMC`
+    #     SELECT CAST(Date as Date), Score_Statement_ML, Score_Statement_DB, Score_Minutes_ML, Score_Minutes_DB
+    #     FROM
+    #     `{project_id}.{staging_dataset}.S_FOMC`
+    #     '''
+    # )
+
+    distinct_news_sources = BigQueryExecuteQueryOperator(
+        task_id='distinct_news_sources',
+        use_legacy_sql=False,
+        write_disposition='WRITE_APPEND',
+        sql=f'''
+        INSERT `{project_id}.{dwh_dataset}.D_NEWS_SOURCES`
+        SELECT DISTINCT CAST(Date as Date) AS Date, Ticker_id, Country_code, Event_sentiment_score, Topic, Event_type, Category, Event_text, News_type, Source_name, Headline
+        FROM
+        `{project_id}.{staging_dataset}.S_NEWS_SOURCES`
+        '''
+    )
+
+    distinct_news_volume_spikes = BigQueryExecuteQueryOperator(
+        task_id='distinct_news_volume_spikes',
+        use_legacy_sql=False,
+        write_disposition='WRITE_APPEND',
+        sql=f'''
+        INSERT `{project_id}.{dwh_dataset}.D_NEWS_VOL_SPIKES`
+        SELECT DISTINCT CAST(Date as Date) AS Date, Ticker_id, News_spikes_w, News_spikes_m, Avg_ess, Avg_ess_w, Avg_ess_m, Avg_str_ess_w, Avg_str_ess_m
+        FROM
+        `{project_id}.{staging_dataset}.S_NEWS_VOL_SPIKES`
+        '''
+    )
+    
     build_fact_table = BigQueryExecuteQueryOperator(
         task_id = 'build_fact_table',
         use_legacy_sql = False,
@@ -196,5 +243,5 @@ def load_dwh_task_group():
     )
 
     check_dwh_exists = check_dwh_tables_exists(project_id, dwh_dataset)
-    check_dwh_exists >> [distinct_all_prices, distinct_all_ta, distinct_exchange_rate, distinct_sg_ir, distinct_stock_dividends, distinct_stock_fundamentals, distinct_stock_info, distinct_fear_greed_index, distinct_esg_score]
+    check_dwh_exists >> [distinct_all_prices, distinct_all_ta, distinct_exchange_rate, distinct_sg_ir, distinct_stock_dividends, distinct_stock_fundamentals, distinct_stock_info, distinct_fear_greed_index, distinct_esg_score, distinct_fomc, distinct_news_sources, distinct_news_volume_spikes]
     [distinct_all_prices, distinct_all_ta, distinct_exchange_rate, distinct_sg_ir, distinct_stock_dividends, distinct_stock_fundamentals, distinct_stock_info, distinct_fear_greed_index, distinct_esg_score] >> build_fact_table

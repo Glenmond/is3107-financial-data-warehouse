@@ -3,13 +3,19 @@ from airflow.providers.google.cloud.operators.bigquery import BigQueryExecuteQue
 #from airflow.providers.google.cloud.operators.bigquery import .BigQueryCheckOperator
 from google.oauth2 import service_account
 import os
-from params import google_cloud_path, staging_dataset, project_id
+from params import google_cloud_path, staging_dataset, project_id, model_path, vectorizer_path
 import pandas as pd
 import talib as tb
 from airflow.decorators import task
 import pandas_gbq
 from google.cloud import bigquery
 import os
+
+import datetime
+import pickle
+from sentiment_model.datapreprocessor import DataPreprocessor
+from sentiment_model.dictmodel import DictionaryModel
+from sentiment_model.backtest import Backtest
 
 def transform_task_group():
     def get_client(project_id, service_account):
@@ -42,6 +48,28 @@ def transform_task_group():
         sti = pd.read_html('https://en.wikipedia.org/wiki/Straits_Times_Index', match='List of STI constituents')[0]
         sti['Stock Symbol'] = sti['Stock Symbol'].apply(lambda x: x.split(" ")[1] + ".SI" )
         return sti.set_index('Stock Symbol').to_dict()['Company']
+
+    def run_sentiment_model(dict_df):
+        from_year = datetime.datetime.now().year # can change based on scheduler
+
+        print(f"===== Running Hawkish-Dovish Index Model =====".title())
+        batch_id = datetime.date.today().strftime("%y%m%d")
+
+        # Preprocessing
+        datapreprecessor = DataPreprocessor(dict_df, batch_id)
+
+        dict_based = DictionaryModel(datapreprecessor.data, from_year)
+        fomc_df = dict_based.predict()
+
+        # bt = Backtest(datapreprecessor.data, from_year)
+        # bt_based = bt.predict()
+
+        # dict_based = DictionaryModel(bt_based, from_year)
+        # fomc_df = dict_based.predict()
+
+        print(f"===== Modelling Process Completed =====".title())
+
+        return fomc_df
 
     @task()
     def transform_prices_to_ta(project_id, dataset_name, target_table_name, destination_table_name):
@@ -164,6 +192,56 @@ def transform_task_group():
                     )
         return pandas_gbq.to_gbq(final_esg_df, f'{dataset_name}.{destination_table_name}', project_id=f'{project_id}', credentials=credentials, if_exists='replace')    
     
+    @task()
+    def transform_fomc_to_sentiment(project_id, dataset_name, target_table_name_1, target_table_name_2, destination_table_name):
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_cloud_path
+        # Get client - Statements
+        client = get_client(project_id, '')
+        query_job = client.query(
+            f"""
+            SELECT
+            *
+            FROM `{project_id}.{dataset_name}.{target_table_name_1}`
+            """
+        )
+        df_1 = query_job.result().to_dataframe() #.set_index('date')
+
+        # Get client - Minutes
+        query_job = client.query(
+            f"""
+            SELECT
+            *
+            FROM `{project_id}.{dataset_name}.{target_table_name_2}`
+            """
+        )
+        df_2 = query_job.result().to_dataframe() #.set_index('date')
+
+        # Transformation tasks
+        dict_df = {
+            "statements": df_1,
+            "minutes": df_2,    
+        }
+        # load in ML model and vectorizer
+        f = open(model_path, "rb")
+        model = pickle.load(f)
+        dict_df['model'] = model
+
+        f = open(vectorizer_path, "rb")
+        vectorizer = pickle.load(f)
+        dict_df['vectorizer'] = vectorizer
+        
+        # run sentiment model
+        fomc_df = run_sentiment_model(dict_df)
+        fomc_df['Date'] = pd.to_datetime(fomc_df['Date'])
+
+        credentials = service_account.Credentials.from_service_account_file(
+                        google_cloud_path,
+                    )
+
+        return pandas_gbq.to_gbq(fomc_df, f'{dataset_name}.{destination_table_name}', project_id=f'{project_id}', credentials=credentials, if_exists='replace')
+
+    
+    
     # Transform Big Query
     # Create remaining dimensions data
 
@@ -245,5 +323,29 @@ def transform_task_group():
         sql = './sql/S_FEAR_GREED_INDEX.sql'
     )
     
+    transform_news_sources = BigQueryExecuteQueryOperator(
+        task_id = 'transform_news_sources',
+        use_legacy_sql = False,
+        params = {
+            'project_id': project_id,
+            'staging_source_dataset': staging_dataset,
+            'staging_destination_dataset': staging_dataset
+        },
+        sql = './sql/S_NEWS_SOURCES.sql'
+    )
+
+    transform_news_volume_spikes = BigQueryExecuteQueryOperator(
+        task_id = 'transform_news_volume_spikes',
+        use_legacy_sql = False,
+        params = {
+            'project_id': project_id,
+            'staging_source_dataset': staging_dataset,
+            'staging_destination_dataset': staging_dataset
+        },
+        sql = './sql/S_NEWS_VOL_SPIKES.sql'
+    )
+
+    
     transform_prices_to_ta_ = transform_prices_to_ta(project_id, staging_dataset, 'PRICE_STAGING', 'S_ALL_TA')
     transform_esg = transform_esg_score(project_id, staging_dataset, 'ESG_SCORE_STAGING', 'S_ESG_SCORE')
+    transform_fomc_to_sentiment = transform_fomc_to_sentiment(project_id, staging_dataset, 'FOMC_STATEMENT_STAGING', 'FOMC_MINUTES_STAGING', 'S_FOMC')
