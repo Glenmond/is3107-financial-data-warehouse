@@ -121,6 +121,20 @@ def split_fear_gread_web_text_to_dataframe(str1):
     df = pd.DataFrame({"Time":time_list, "FG_Value":value_list, "FG_Textvalue":text_list})
     return df
 
+def get_most_recent_date_of_prices(bucket_name):
+    #check if DAG has been run before
+    if blob_exists(bucket_name, 'prices.csv'):
+        prices = blob_download_to_df(bucket_name, 'prices.csv')
+        #if yes, get the most recent date
+        most_recent_date = prices['Date'].max()
+        recent_date = datetime.strptime(most_recent_date, '%Y-%m-%d')
+    else: 
+        #if no, then get historical data which is 1 year ago
+        recent_date = (datetime.today() - relativedelta(months=12)).strftime("%Y-%m-%d")
+    return recent_date
+
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_cloud_path
+recent_date = get_most_recent_date_of_prices(gs_bucket)
 
 def extract_data_task_group():
     """
@@ -150,7 +164,7 @@ def extract_data_task_group():
         sti = pd.read_html('https://en.wikipedia.org/wiki/Straits_Times_Index', match='List of STI constituents')[0]
         sti['Stock Symbol'] = sti['Stock Symbol'].apply(lambda x: x.split(" ")[1] + ".SI" )
         return sti.set_index('Stock Symbol').to_dict()['Company']
-
+    
     @task(task_id='extract_all_prices')
     def extract_all_prices(sti_tickers, bucket_name):
         """
@@ -174,10 +188,12 @@ def extract_data_task_group():
         }
         full_tickers = {**sti_tickers, **fixed_tickers}
         tickers_list = [*full_tickers.keys()]
+        #check if prices data is extracted before
         if blob_exists(bucket_name, 'prices.csv'):
-            prices_df = get_adj_close(tickers_list, start_date=(datetime.today() - relativedelta(months=2)).strftime("%Y-%m-%d"), end_date=(datetime.today()).strftime("%Y-%m-%d"))
+            #if yes, get the most recent date and extract past one month data from the recent date till current date for TA analysis
+            prices_df = get_adj_close(tickers_list, start_date=(recent_date - relativedelta(months=1)).strftime("%Y-%m-%d"), end_date=(datetime.today()).strftime("%Y-%m-%d"))
         else:    
-            prices_df = get_adj_close(tickers_list, start_date=(datetime.today() - relativedelta(months=12)).strftime("%Y-%m-%d"), end_date=(datetime.today()).strftime("%Y-%m-%d"))
+            prices_df = get_adj_close(tickers_list, start_date=(recent_date).strftime("%Y-%m-%d"), end_date=(datetime.today()).strftime("%Y-%m-%d"))
         prices_df['Name'] = prices_df['Ticker'].map(full_tickers)
         return prices_df.rename_axis('Date').reset_index()
 
@@ -344,52 +360,52 @@ def extract_data_task_group():
 
     @task(task_id='extract_fear_greed_index')
     def extract_fear_greed_index(bucket_name):
+        today_date = datetime.today().strftime("%Y-%m-%d")
         #If the file exits, then get historical data, if not then start with empty df
         if blob_exists(bucket_name, 'fear_greed_index.csv'):
             fear_greed_index = blob_download_to_df(bucket_name, 'fear_greed_index.csv')
             fear_greed_index = fear_greed_index.iloc[: , 1:]
         else: 
             fear_greed_index = pd.DataFrame()
+  
+        #only extract when there is no historical value or today's data is not updated 
+        if fear_greed_index.empty or (fear_greed_index.empty is False and today_date in fear_greed_index['Date'].values is False):
+            """Scrapes CNN Fear and Greed Index HTML page
+                Parameters
+                ----------
+                None
+                Returns
+                -------
+                BeautifulSoup
+                CNN Fear And Greed Index HTML page
+            """
+            
+            #Scrape data from webpage
+            text_soup_cnn = BeautifulSoup(
+                _get_html("https://money.cnn.com/data/fear-and-greed/"),
+                "lxml",
+            )
+
+            # Extract in fear and greed index
+            index_data = (
+                text_soup_cnn.findAll("div", {"class": "modContent feargreed"})[0]
+                .contents[0]
+                .text
+            )
         
-        """Scrapes CNN Fear and Greed Index HTML page
-            Parameters
-            ----------
-            None
-            Returns
-            -------
-            BeautifulSoup
-            CNN Fear And Greed Index HTML page
-        """
-        #fear_greed_index = pd.DataFrame()
-        #Scrape data from webpage
-        text_soup_cnn = BeautifulSoup(
-            _get_html("https://money.cnn.com/data/fear-and-greed/"),
-            "lxml",
-        )
+            #Format web data into dataframe
+            transformed_df = split_fear_gread_web_text_to_dataframe(index_data)
+            daily_data_df = transformed_df.iloc[0:1]
+            today_date = (datetime.today() - relativedelta(days=1)).strftime("%Y-%m-%d")
+            daily_data_df.insert(0, "Date", today_date, True)
+            prev_close = transformed_df._get_value(1, 'FG_Value')
+            daily_data_df['FG_Close'] = [prev_close]
+            prev_close_text = transformed_df._get_value(1, 'FG_Textvalue')
+            daily_data_df['FG_Closetext'] = [prev_close_text]
 
-        # Extract in fear and greed index
-        index_data = (
-            text_soup_cnn.findAll("div", {"class": "modContent feargreed"})[0]
-            .contents[0]
-            .text
-        )
-        
-        #Format web data into dataframe
-        dt_string = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        transformed_df = split_fear_gread_web_text_to_dataframe(index_data)
-        daily_data_df = transformed_df.iloc[0:1]
-        today_date = datetime.today().strftime("%Y-%m-%d")
-        daily_data_df.insert(0, "Date", today_date, True)
-        daily_data_df['Access_Time'] = [dt_string]
-        prev_close = transformed_df._get_value(1, 'FG_Value')
-        daily_data_df['FG_Close'] = [prev_close]
-        prev_close_text = transformed_df._get_value(1, 'FG_Textvalue')
-        daily_data_df['FG_Closetext'] = [prev_close_text]
-
-        #Get all fear_greed_index data
-        fear_greed_index = fear_greed_index.append(daily_data_df, ignore_index=True)
-
-        return fear_greed_index
+        else:
+            daily_data_df =  fear_greed_index
+        return daily_data_df
 
     @task(task_id='extract_esg_score')
     def extract_esg_score(sti_tickers, bucket_name):
@@ -434,12 +450,10 @@ def extract_data_task_group():
             final_df.insert(0, "Date", today_date, True)
         # no need to extract data
         else: 
-            final_df = pd.DataFrame()
+            final_df = esg_final
 
-        #Add today's data to historical data on gcs
-        esg_final_df = esg_final.append(final_df, ignore_index=True)
-        return esg_final_df
-    
+        return final_df 
+
     @task(task_id='extract_fomc_statement')
     def extract_fomc_statement(bucket_name):
         """

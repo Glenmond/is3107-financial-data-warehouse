@@ -17,6 +17,7 @@ LEFT JOIN
 `{{ params.project_id }}.{{ params.staging_source_dataset }}.EXCHANGE_RATE_STAGING` er
 ON
 er.Date = price.Date
+WHERE price.Date >= '{{ params.recent_date }}' and er.Date >= '{{ params.recent_date }}'
 UNION ALL
 SELECT
 price.Date AS Date,
@@ -32,6 +33,7 @@ price.Volume AS Volume,
 "SGD" AS Exchange_rate_ticker
 FROM
 `{{ params.project_id }}.{{ params.staging_source_dataset }}.PRICE_STAGING` price
+WHERE price.Date >= '{{ params.recent_date }}'
 ORDER BY
 Date,
 Ticker_id DESC

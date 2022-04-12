@@ -12,7 +12,7 @@ sf.Return_on_equity as ROE,
 sf.Price_earning_ratio as PE_RATIO,
 sgir.sora as Sora,
 div.Dividends as Dividends,
-fgi.FG_Value as Fear_Greed_Value,
+fgi.FG_Textvalue as Fear_Greed_Value,
 esg.Total_ESG as ESG_Score
  FROM `{{ params.project_id }}.{{ params.dwh_dataset }}.D_ALL_PRICE` ps 
  LEFT JOIN `{{ params.project_id }}.{{ params.dwh_dataset }}.D_STOCK_INFO` si 

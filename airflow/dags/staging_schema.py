@@ -84,11 +84,8 @@ STOCK_QUERY = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
 ,]
 
 FEAR_GREED_INDEX = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
-,SchemaField('Access_Time', 'DATE', 'NULLABLE', None, ())
 ,SchemaField('FG_Value', 'FLOAT', 'NULLABLE', None, ())
 ,SchemaField('FG_Textvalue', 'STRING', 'NULLABLE', None, ())
-,SchemaField('FG_Close', 'FLOAT', 'NULLABLE', None, ())
-,SchemaField('FG_Closetext', 'STRING', 'NULLABLE', None, ())
 ,]
 
 ESG_SCORE = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())

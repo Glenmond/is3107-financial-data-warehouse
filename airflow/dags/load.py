@@ -163,9 +163,9 @@ def load_dwh_task_group():
     distinct_fear_greed_index = BigQueryExecuteQueryOperator(
         task_id='distinct_fear_greed_index',
         use_legacy_sql=False,
-        write_disposition='WRITE_TRUNCATE',
+        write_disposition='WRITE_APPEND',
         sql=f'''
-        CREATE OR REPLACE TABLE `{project_id}.{dwh_dataset}.D_FEAR_GREED_INDEX` AS
+        INSERT `{project_id}.{dwh_dataset}.D_FEAR_GREED_INDEX`
         SELECT DISTINCT *
         FROM
         `{project_id}.{staging_dataset}.S_FEAR_GREED_INDEX`

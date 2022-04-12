@@ -10,6 +10,7 @@ from airflow.decorators import task
 import pandas_gbq
 from google.cloud import bigquery
 import os
+from extract import recent_date
 
 import datetime
 import pickle
@@ -143,7 +144,8 @@ def transform_task_group():
                         google_cloud_path,
                     )
         data['Date'] = pd.to_datetime(data['Date'])
-        return pandas_gbq.to_gbq(data, f'{dataset_name}.{destination_table_name}', project_id=f'{project_id}', credentials=credentials, if_exists='replace')    
+        result = data[data['Date'] >= recent_date]
+        return pandas_gbq.to_gbq(result, f'{dataset_name}.{destination_table_name}', project_id=f'{project_id}', credentials=credentials, if_exists='replace')    
     
     @task(task_id='transform_esg_score')
     def transform_esg_score(project_id, dataset_name, target_table_name, destination_table_name):
@@ -263,7 +265,8 @@ def transform_task_group():
         params = {
             'project_id': project_id,
             'staging_source_dataset': staging_dataset,
-            'staging_destination_dataset': staging_dataset
+            'staging_destination_dataset': staging_dataset,
+            "recent_date": (recent_date).strftime("%Y-%m-%d")
         },
         sql = './sql/S_ALL_PRICE.sql'
     )
