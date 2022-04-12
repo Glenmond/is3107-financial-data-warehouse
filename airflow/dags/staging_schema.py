@@ -81,6 +81,8 @@ STOCK_QUERY = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
 ,SchemaField('PE_Ratio', 'FLOAT', 'NULLABLE', None, ())
 ,SchemaField('Sora', 'FLOAT', 'NULLABLE', None, ())
 ,SchemaField('Dividends', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Fear_Greed_Value', 'STRING', 'NULLABLE', None, ())
+,SchemaField('ESG_Score', 'FLOAT', 'NULLABLE', None, ())
 ,]
 
 FEAR_GREED_INDEX = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
