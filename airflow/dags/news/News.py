@@ -10,18 +10,18 @@ import numpy as np
 # import datetime
 from ravenpackapi import RPApi
 
-apikey = RPApi(api_key='# INSERT YOUR API KEY')
+apikey = RPApi(api_key='0KWrK3jwSACDor2JHZpVFP')
 
 news_sources = {
-    'dbs_general': "43DF4D8FA22B80ECE94E8729BEDEC6C4",
-    'uob_general': "FD5AA5E1DBD987CE34BED42728ADCCE4",
-    'ocbc_general': "4B27B6E1B37DDBF8CA6604646B42B8DD",
+    'D05.SI': "43DF4D8FA22B80ECE94E8729BEDEC6C4", # dbs_general
+    'U11.SI': "FD5AA5E1DBD987CE34BED42728ADCCE4", # uob_general
+    'O39.SI': "4B27B6E1B37DDBF8CA6604646B42B8DD", # ocbc_general
 }
 
 news_volume_spikes = {
-    'dbs_news_volume_spikes': "B25D42AF9042C76574B87E4ABDE66B81",
-    'uob_news_volume_spikes': "7698BF1230711675A6ED9A53A21514A5",
-    'ocbc_news_volume_spikes': "7FF80DA8AFB3C36F7DCFA2BE2D0EC364"
+    'D05.SI': "B25D42AF9042C76574B87E4ABDE66B81", # dbs_news_volume_spikes
+    'U11.SI': "7698BF1230711675A6ED9A53A21514A5", # uob_news_volume_spikes
+    'O39.SI': "7FF80DA8AFB3C36F7DCFA2BE2D0EC364" # ocbc_news_volume_spikes
 }
 
 class News():
@@ -63,10 +63,11 @@ class News():
         if self.spikes != True: # news spikes not True
             print("Getting articles for news..." + 'Date range: ' + str(dates[0]) + ' to ' + str(dates[-1]))
             
-            
             ldf = []
             for k, v in news_sources.items():
-                ldf.append(self.download_data(v, self.start, self.end))
+                temp_df = self.download_data(v, self.start, self.end)
+                temp_df['entity_name'] = k
+                ldf.append(temp_df)
             news_sources_df = pd.concat(ldf, axis=0)
             news_sources_df.reset_index(inplace=True, drop=True)
 
@@ -76,16 +77,19 @@ class News():
         else:
             print("Getting articles for news volume spikes..." + 'Date range: ' + str(dates[0]) + ' to ' + str(dates[-1]))
             
-            
             ldf = []
             for k, v in news_volume_spikes.items():
-                ldf.append(self.download_data(v, self.start, self.end))
+                temp_df = self.download_data(v, self.start, self.end)
+                temp_df = temp_df[(temp_df['rp_entity_id']=="ROLLUP")]
+                temp_df['entity_name'] = k
+                ldf.append(temp_df)
             news_volume_spikes_df = pd.concat(ldf, axis=0)
             news_volume_spikes_df.reset_index(inplace=True, drop=True)
             
             # Assign to attributes
             self.news_df = news_volume_spikes_df
 
+        # MAPPING
         return self.news_df
 
     
