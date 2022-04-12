@@ -34,7 +34,7 @@ def load_dwh_task_group():
     def create_dataset(dataset_id, client):
         '''
         Create dataset in a project
-        Parameteres:
+        Parameters:
             - dataset_id (str): ID of dataset to be created
             - client (obj): client object
         '''
@@ -48,6 +48,9 @@ def load_dwh_task_group():
             logging.info(f'Dataset not created. {dataset_id} already exists.')
 
     def create_table(table_id, schema, dataset_id, client):
+        '''
+        Create Table in a project
+        '''
         dataset_ref = client.dataset(dataset_id)
         table_ref = dataset_ref.table(table_id)
         table = bigquery.Table(table_ref, schema=schema)
@@ -60,6 +63,9 @@ def load_dwh_task_group():
 
     @task()
     def check_dwh_tables_exists(project_id, dataset_name):
+        '''
+        Check if Table exists in DWH
+        '''
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_cloud_path
         # Get client
         client = get_client(project_id, '')

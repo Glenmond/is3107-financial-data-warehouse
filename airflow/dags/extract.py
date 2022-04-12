@@ -24,6 +24,9 @@ except ModuleNotFoundError:
     from .news.News import News
 
 def get_adj_close(tickers, start_date, end_date):
+    """
+    Returns Stock Price Information from Yahoo Finance
+    """
     returns_df = pd.DataFrame(columns=['Ticker', 'High', 'Low', 'Open', 'Close', 'Volume', 'Adj Close'])
     cannot_find = []
     for ticker in tickers:
@@ -40,6 +43,9 @@ def get_adj_close(tickers, start_date, end_date):
     return returns_df
 
 def array_to_df(values, ticker, ta, subta=None, blob_exists=True):
+    """
+    Helper function to convert price array to DataFrame
+    """
     df = pd.DataFrame(values, columns=['Value'])
     df = df.dropna()
     df['Ticker'] = ticker
@@ -49,12 +55,18 @@ def array_to_df(values, ticker, ta, subta=None, blob_exists=True):
     return df
 
 def blob_exists(bucket_name, filename):
+    """
+    Helper function to check if bucket exists in GCS
+    """
     client = storage.Client()
     bucket = client.get_bucket(bucket_name)
     blob = bucket.blob(filename)
     return blob.exists()
 
 def blob_download_to_df(bucket_name, filename):
+    """
+    Retrieves CSV file from GCS
+    """
     client = storage.Client()
     bucket = client.get_bucket(bucket_name)
     blob = bucket.blob(filename)
@@ -63,14 +75,8 @@ def blob_download_to_df(bucket_name, filename):
     return df
 
 def _get_user_agent() -> str:
-    """Get a random User-Agent strings from a list of some recent real browsers
-    Parameters
-    ----------
-    None
-    Returns
-    -------
-    str
-        random User-Agent strings
+    """
+    Get a random User-Agent strings from a list of some recent real browsers
     """
     user_agent_strings = [
         "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.10; rv:86.1) Gecko/20100101 Firefox/86.1",
@@ -85,17 +91,10 @@ def _get_user_agent() -> str:
     return random.choice(user_agent_strings)
 
 def _get_html(url: str):
-    """Wraps HTTP requests.get for testibility.
+    """
+    Wraps HTTP requests.get for testibility.
     Fake the user agent by changing the User-Agent header of the request
     and bypass such User-Agent based blocking scripts used by websites.
-    Parameters
-    ----------
-    url : str
-        HTML page URL
-    Returns
-    -------
-    str
-        HTML page
     """
     return requests.get(url, headers={"User-Agent": _get_user_agent()}).text
 
@@ -122,6 +121,9 @@ def split_fear_gread_web_text_to_dataframe(str1):
     return df
 
 def get_most_recent_date_of_prices(bucket_name):
+    """
+    Returns the most recent date of prices from previous runs
+    """
     #check if DAG has been run before
     if blob_exists(bucket_name, 'prices.csv'):
         prices = blob_download_to_df(bucket_name, 'prices.csv')
@@ -149,7 +151,6 @@ def extract_data_task_group():
     @task()
     def check_if_gcs_bucket_exists(bucket_name):
         """
-        #### Check Task
         Check if bucket in Google Cloud Storage Exists for intermediate data dump
         """
         client = storage.Client()
@@ -161,6 +162,9 @@ def extract_data_task_group():
 
     @task()
     def scrape_sti_tickers():
+        """
+        Scrape latest STI Tickers from Wikipedia
+        """
         sti = pd.read_html('https://en.wikipedia.org/wiki/Straits_Times_Index', match='List of STI constituents')[0]
         sti['Stock Symbol'] = sti['Stock Symbol'].apply(lambda x: x.split(" ")[1] + ".SI" )
         return sti.set_index('Stock Symbol').to_dict()['Company']
@@ -168,7 +172,6 @@ def extract_data_task_group():
     @task(task_id='extract_all_prices')
     def extract_all_prices(sti_tickers, bucket_name):
         """
-        #### Extract prices
         Extract all prices for stock market analysis
         """
         fixed_tickers = {
@@ -199,6 +202,9 @@ def extract_data_task_group():
 
     @task(task_id='extract_stock_info')
     def extract_stock_info(sti_tickers, bucket_name):
+        """
+        Extract the latest stock information (Reference Data) from Yahoo Finance
+        """
         if blob_exists(bucket_name, 'stock_info.csv') is False or (datetime.today().day == 1 and datetime.today().month in [1, 4, 7, 10]):
             tickers_list = [*sti_tickers.keys()]
             info_df = None
@@ -220,6 +226,9 @@ def extract_data_task_group():
 
     @task(task_id='extract_stock_fundamentals')
     def extract_stock_fundamentals(sti_tickers, bucket_name):
+        """
+        Extract latest stock fundamentals (Accounting Data) from Yahoo Finance
+        """
         if blob_exists(bucket_name, 'stock_fundamentals.csv') is False or (datetime.today().day == 1 and datetime.today().month in [1, 4, 7, 10]):
             tickers_list = [*sti_tickers.keys()]
             fun_df = None
@@ -244,6 +253,9 @@ def extract_data_task_group():
 
     @task(task_id='extract_stock_dividends')
     def extract_stock_dividends(sti_tickers):
+        """
+        Extract latest stock dividends from Yahoo Finance
+        """
         tickers_list = [*sti_tickers.keys()]
         div_df = None
         for i in tickers_list:
@@ -260,6 +272,9 @@ def extract_data_task_group():
 
     @task(task_id='extract_exchange_rates')
     def extract_exchange_rates(bucket_name):
+        """
+        Extract Latest Exchange Rates from Yahoo Finance
+        """
         exchange_rate_mapping = {
             'SGDUSD=X': 'SGD/USD',
             'SGDCNY=X': 'SGD/CNY',
@@ -278,6 +293,9 @@ def extract_data_task_group():
 
     @task(task_id='extract_sg_ir')
     def extract_sg_ir(bucket_name):
+        """
+        Extract latest SORA data from MAS API
+        """
         if blob_exists(bucket_name, 'sg_ir.csv'):
             start_date = (datetime.today()- relativedelta(months=6)).strftime("%Y-%m-%d") 
             end_date = datetime.today().strftime("%Y-%m-%d") 
@@ -292,74 +310,11 @@ def extract_data_task_group():
         sg_interest_rate['Date']= pd.to_datetime(sg_interest_rate['Date'])
         return sg_interest_rate
 
-
-    @task(task_id='extract_all_ta')
-    def transform_prices_ta(sti_tickers, bucket_name, df):
-        """
-        #### Transform task for prices
-        A simple Transform task which takes in the collection of order data and
-        computes the total order value.
-        """
-        df = df.set_index('Date')
-        blobExists = blob_exists(bucket_name, 'ta_prices.csv')
-        data = pd.DataFrame(columns=['Date', 'Stock', 'TA', 'TA_2', 'Value'])
-        tickers_list = [*sti_tickers.keys()]
-        for i in tickers_list:
-            try:
-                df_ticker = df[df['Ticker'] == i].dropna()
-                open, high, low, close, vol, adj_close = df_ticker['Open'], df_ticker['High'], df_ticker['Low'], df_ticker['Close'], df_ticker['Volume'], df_ticker['Adj Close']
-                # SMA
-                data = data.append(array_to_df(tb.SMA(adj_close, timeperiod=30), i, 'SMA', blobExists))
-                # EMA
-                data = data.append(array_to_df(tb.EMA(adj_close, timeperiod=30), i, 'EMA', blobExists))
-                # WMA
-                data = data.append(array_to_df(tb.WMA(adj_close, timeperiod=30), i, 'WMA', blobExists))
-                # Bollinger Bands
-                lower, middle, upper = tb.BBANDS(adj_close, timeperiod=5, nbdevup=2, nbdevdn=2, matype=0)
-                data = data.append(array_to_df(lower, i, 'BBANDS', 'Lower Band', blobExists))
-                data = data.append(array_to_df(lower, i, 'BBANDS', 'Middle Band', blobExists))
-                data = data.append(array_to_df(lower, i, 'BBANDS', 'Upper Band', blobExists))
-                # Momentum Indicators
-                # MACD
-                macd, macdsignal, macdhist = tb.MACD(adj_close, fastperiod=12, slowperiod=26, signalperiod=9)
-                data = data.append(array_to_df(macd, i, 'MACD', 'MACD', blobExists))
-                data = data.append(array_to_df(macdsignal, i, 'MACD', 'MACD Signal', blobExists))
-                data = data.append(array_to_df(macdhist, i, 'MACD', 'MACD Historical', blobExists))
-                # STOCH
-                slowk, slowd = tb.STOCH(high, low, adj_close, fastk_period=5, slowk_period=3, slowk_matype=0, slowd_period=3, slowd_matype=0)
-                data = data.append(array_to_df(slowk, i, 'STOCH', 'SlowK', blobExists))
-                data = data.append(array_to_df(slowd, i, 'STOCH', 'SlowD', blobExists))   
-                #RSI
-                data = data.append(array_to_df(tb.RSI(adj_close, timeperiod=14), i, 'RSI', blobExists))
-                # Volume Indicators
-                # AD
-                real = tb.AD(high, low, adj_close, vol)
-                data = data.append(array_to_df(real, i, 'AD', blobExists))
-                # ADOSC
-                real = tb.ADOSC(high, low, adj_close, vol, fastperiod=3, slowperiod=10)
-                data = data.append(array_to_df(real, i, 'ADOSC', blobExists))
-                # OBV
-                real = tb.OBV(adj_close, vol)
-                data = data.append(array_to_df(real, i, 'OBV', blobExists))
-                # Volatility Indicators
-                # ATR
-                real = tb.ATR(high, low, adj_close, timeperiod=14)
-                data = data.append(array_to_df(real, i, 'ATR', blobExists))
-                # NATR
-                real = tb.NATR(high, low, adj_close, timeperiod=14)
-                data = data.append(array_to_df(real, i, 'NATR', blobExists))
-                # TRANGE
-                real = tb.TRANGE(high, low, adj_close)
-                data = data.append(array_to_df(real, i, 'TRANGE', blobExists))
-            except Exception as e:
-                print(e)
-                print(i)
-        data['Stock'] = data['Ticker'].map(sti_tickers)
-        data = data.reset_index(drop=True)
-        return data
-
     @task(task_id='extract_fear_greed_index')
     def extract_fear_greed_index(bucket_name):
+        """
+        Scrapes CNN Fear and Greed Index HTML page
+        """
         today_date = datetime.today().strftime("%Y-%m-%d")
         #If the file exits, then get historical data, if not then start with empty df
         if blob_exists(bucket_name, 'fear_greed_index.csv'):
@@ -370,16 +325,6 @@ def extract_data_task_group():
   
         #only extract when there is no historical value or today's data is not updated 
         if fear_greed_index.empty or (fear_greed_index.empty is False and today_date in fear_greed_index['Date'].values is False):
-            """Scrapes CNN Fear and Greed Index HTML page
-                Parameters
-                ----------
-                None
-                Returns
-                -------
-                BeautifulSoup
-                CNN Fear And Greed Index HTML page
-            """
-            
             #Scrape data from webpage
             text_soup_cnn = BeautifulSoup(
                 _get_html("https://money.cnn.com/data/fear-and-greed/"),
@@ -409,6 +354,9 @@ def extract_data_task_group():
 
     @task(task_id='extract_esg_score')
     def extract_esg_score(sti_tickers, bucket_name):
+        """
+        Scrapes latest ESG Score from Yahoo Finance
+        """
         today_date = datetime.today().strftime("%Y-%m-%d")
         #get historical data on the gcs
         if blob_exists(bucket_name, 'esg_score.csv'):
@@ -537,8 +485,6 @@ def extract_data_task_group():
     sg_exchange_rates = extract_exchange_rates(bucket_name=bucket)
     # SG Interest Rates
     sg_ir_df = extract_sg_ir(bucket_name=bucket)
-    # TA for Prices
-    #ta_data = transform_prices_ta(tickers, bucket, price_df)
     # Fear and Greed Index 
     fear_greed_index_df = extract_fear_greed_index(bucket_name=bucket)
     esg_score_df = extract_esg_score(tickers,  bucket_name=bucket)
@@ -548,6 +494,4 @@ def extract_data_task_group():
     # News
     news_sources_df = extract_news_sources(bucket_name=bucket)
     news_volume_spikes_df = extract_news_volume_spikes(bucket_name=bucket)
-
     check_bucket >> [price_df, sg_exchange_rates, sg_ir_df, stock_info_df, stock_fundamentals_df, stock_dividends_df, fear_greed_index_df, esg_score_df, news_sources_df, news_volume_spikes_df, fomc_st_df, fomc_min_df] 
-    #tickers >> price_df >> ta_data

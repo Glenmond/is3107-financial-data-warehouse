@@ -47,6 +47,9 @@ def gcs_to_staging_task_group():
 
     @task()
     def check_staging_exists(project_id, dataset_name):
+        '''
+        Create staging dataset in a project if not available
+        '''
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_cloud_path
         # Get client
         client = get_client(project_id, '')

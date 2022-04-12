@@ -51,6 +51,9 @@ def transform_task_group():
         return sti.set_index('Stock Symbol').to_dict()['Company']
 
     def run_sentiment_model(dict_df):
+        '''
+        Sentiment Model to score News Data
+        '''
         from_year = datetime.datetime.now().year # can change based on scheduler
 
         print(f"===== Running Hawkish-Dovish Index Model =====".title())
@@ -74,6 +77,9 @@ def transform_task_group():
 
     @task()
     def transform_prices_to_ta(project_id, dataset_name, target_table_name, destination_table_name):
+        '''
+        Transform Prices to TA Indicators
+        '''
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_cloud_path
         # Get client
         client = get_client(project_id, '')
@@ -149,6 +155,9 @@ def transform_task_group():
     
     @task(task_id='transform_esg_score')
     def transform_esg_score(project_id, dataset_name, target_table_name, destination_table_name):
+        '''
+        Transform ESG Score 
+        '''
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_cloud_path
         # Get client
         client = get_client(project_id, '')
@@ -196,6 +205,9 @@ def transform_task_group():
     
     @task()
     def transform_fomc_to_sentiment(project_id, dataset_name, target_table_name_1, target_table_name_2, destination_table_name):
+        '''
+        Generate Sentiment Scores from FOMC Data
+        '''
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_cloud_path
         # Get client - Statements
         client = get_client(project_id, '')
