@@ -236,38 +236,6 @@ class DictionaryModel:
         )
         return df
 
-    # def update(self, curr_df, name):
-    #     """
-    #     Update historical dataframe with latest results and override with original dataframe
-    #     Rules:
-    #     1. Update maximum up to 1 year from the latest data in existing dataframe
-    #     """
-    #     # get last index of the curr dataframe
-    #     old_df = self.data["historical"][name]
-
-    #     start_dt = curr_df["date"].iloc[0]  # start date of new df
-    #     hist_end_dt = old_df["date"].iloc[
-    #         -12
-    #     ]  # historical end date, maximum override 12 rows
-
-    #     if start_dt < hist_end_dt:
-    #         curr_df = curr_df[(curr_df["date"] >= hist_end_dt)]
-    #         old_df = old_df[(old_df["date"] < hist_end_dt)]
-    #     else:  # start_dt >= hist_end_dt
-    #         old_df = old_df[(old_df["date"] < start_dt)]
-        
-    #     # concat values
-    #     df = pd.concat([old_df, curr_df])
-    #     df.reset_index(inplace=True, drop=True)
-
-    #     # ensure missing NaN value is updated
-    #     df.update(self.data["historical"][name])
-    #     df = self.scale(df)
-
-    #     # self.save_df(name, df)
-
-    #     self.data["historical"][name] = df  # replace the historical dictionary
-    
     def combine_df(self):
         """
         To combine and finalise all df results
@@ -278,18 +246,12 @@ class DictionaryModel:
         st_df['date'] = st_df['date'] + MonthEnd(0)
         mins_df['date'] = mins_df['date'] + MonthEnd(0)
 
-        st_df = st_df[['date', 'Scaled Score DB']]
-        mins_df = mins_df[['date', 'Scaled Score DB']]
-
-        # st_df = st_df[['date', 'Scaled Score', 'Scaled Score DB']]
-        # mins_df = mins_df[['date', 'Scaled Score', 'Scaled Score DB']]
+        st_df = st_df[['date', 'Scaled Score', 'Scaled Score DB']]
+        mins_df = mins_df[['date', 'Scaled Score', 'Scaled Score DB']]
 
         # rename columns
-        st_df.rename(columns = {"date": "Date", "Scaled Score DB" : "Score_Statement_DB"}, inplace=True)
-        mins_df.rename(columns = {"date": "Date", "Scaled Score DB" : "Score_Minutes_DB"}, inplace=True)
-
-        # st_df.rename(columns = {"date": "Date", "Scaled Score" : "Score_Statement_ML", "Scaled Score DB" : "Score_Statement_DB"}, inplace=True)
-        # mins_df.rename(columns = {"date": "Date", "Scaled Score" : "Score_Minutes_ML", "Scaled Score DB" : "Score_Minutes_DB"}, inplace=True)
+        st_df.rename(columns = {"date": "Date", "Scaled Score" : "Score_Statement_ML", "Scaled Score DB" : "Score_Statement_DB"}, inplace=True)
+        mins_df.rename(columns = {"date": "Date", "Scaled Score" : "Score_Minutes_ML", "Scaled Score DB" : "Score_Minutes_DB"}, inplace=True)
 
 
         dfs = [mins_df, st_df]
@@ -301,8 +263,7 @@ class DictionaryModel:
 
         # remove duplicates (eg, 2020-03 have 4 FOMC meetings, hence we aim to get the mean score)
         duplicate = df_final[df_final.duplicated('Date', keep=False)]
-        duplicate = duplicate.groupby(['Date'], as_index=False).agg({'Score_Minutes_DB': 'mean', 'Score_Statement_DB': 'mean',})
-        # duplicate = duplicate.groupby(['Date'], as_index=False).agg({'Score_Minutes_ML': 'mean', 'Score_Minutes_DB': 'mean', 'Score_Statement_ML': 'mean', 'Score_Statement_DB': 'mean',})
+        duplicate = duplicate.groupby(['Date'], as_index=False).agg({'Score_Minutes_ML': 'mean', 'Score_Minutes_DB': 'mean', 'Score_Statement_ML': 'mean', 'Score_Statement_DB': 'mean',})
         df_final.drop_duplicates(subset=['Date'], keep=False, inplace=True)
         df_final = pd.concat([df_final, duplicate], ignore_index=True)
         df_final.sort_values(by=['Date'], inplace=True)
