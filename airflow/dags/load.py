@@ -196,23 +196,11 @@ def load_dwh_task_group():
         write_disposition='WRITE_APPEND',
         sql=f'''
         INSERT `{project_id}.{dwh_dataset}.D_FOMC`
-        SELECT CAST(Date as Date), Score_Statement_DB, Score_Minutes_DB
+        SELECT CAST(Date as Date), Score_Statement_ML, Score_Statement_DB, Score_Minutes_ML, Score_Minutes_DB
         FROM
         `{project_id}.{staging_dataset}.S_FOMC`
         '''
     )
-
-    # distinct_fomc = BigQueryExecuteQueryOperator(
-    #     task_id='distinct_fomc',
-    #     use_legacy_sql=False,
-    #     write_disposition='WRITE_APPEND',
-    #     sql=f'''
-    #     INSERT `{project_id}.{dwh_dataset}.D_FOMC`
-    #     SELECT CAST(Date as Date), Score_Statement_ML, Score_Statement_DB, Score_Minutes_ML, Score_Minutes_DB
-    #     FROM
-    #     `{project_id}.{staging_dataset}.S_FOMC`
-    #     '''
-    # )
 
     distinct_news_sources = BigQueryExecuteQueryOperator(
         task_id='distinct_news_sources',

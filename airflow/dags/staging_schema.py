@@ -83,6 +83,17 @@ STOCK_QUERY = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
 ,SchemaField('Dividends', 'FLOAT', 'NULLABLE', None, ())
 ,SchemaField('Fear_Greed_Value', 'STRING', 'NULLABLE', None, ())
 ,SchemaField('ESG_Score', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('News_spikes_w', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('News_spikes_m', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Avg_ess', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Avg_ess_w', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Avg_ess_m', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Avg_str_ess_w', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Avg_str_ess_m', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Score_Statement_ML', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Score_Statment_DB', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Score_Minutes_ML', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Score_Minutes_DB', 'FLOAT', 'NULLABLE', None, ())
 ,]
 
 FEAR_GREED_INDEX = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
@@ -98,15 +109,10 @@ ESG_SCORE = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
 ,SchemaField('Total_ESG', 'FLOAT', 'NULLABLE', None, ())
 ,]
 
-# FOMC = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
-# ,SchemaField('Score_Statement_ML', 'FLOAT', 'NULLABLE', None, ())
-# ,SchemaField('Score_Statment_DB', 'FLOAT', 'NULLABLE', None, ())
-# ,SchemaField('Score_Minutes_ML', 'FLOAT', 'NULLABLE', None, ())
-# ,SchemaField('Score_Minutes_DB', 'FLOAT', 'NULLABLE', None, ())
-# ,]
-
 FOMC = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
+,SchemaField('Score_Statement_ML', 'FLOAT', 'NULLABLE', None, ())
 ,SchemaField('Score_Statment_DB', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Score_Minutes_ML', 'FLOAT', 'NULLABLE', None, ())
 ,SchemaField('Score_Minutes_DB', 'FLOAT', 'NULLABLE', None, ())
 ,]
 

@@ -438,10 +438,16 @@ def extract_data_task_group():
         Return RavenPack News Headline + Sentiment Data
         """
         if blob_exists(bucket_name, 'news_sources.csv'):
-            start_date = (datetime.today()- relativedelta(months=1)).strftime("%Y-%m-%d") 
+            news_df = blob_download_to_df(bucket_name, 'news_sources.csv')
+            #if yes, get the most recent date
+            news_df['timestamp_tz'] = news_df['timestamp_tz'].apply(lambda x : x[:-4]) # remove decimals
+            most_recent_date = news_df['timestamp_tz'].max()
+            start_date = datetime.strptime(most_recent_date, '%Y-%m-%d %H:%M:%S').strftime("%Y-%m-%d")
             end_date = datetime.today().strftime("%Y-%m-%d") 
+
         else:    
-            start_date = (datetime.today()- relativedelta(months=2)).strftime("%Y-%m-%d") 
+            # else take 3 months historical data
+            start_date = (datetime.today()- relativedelta(months=3)).strftime("%Y-%m-%d") 
             end_date = datetime.today().strftime("%Y-%m-%d")
 
         news = News(False)
@@ -455,10 +461,16 @@ def extract_data_task_group():
         Return RavenPack News Volume Spikes
         """
         if blob_exists(bucket_name, 'news_volume_spikes.csv'):
-            start_date = (datetime.today()- relativedelta(months=1)).strftime("%Y-%m-%d") 
-            end_date = datetime.today().strftime("%Y-%m-%d") 
+            news_vol_df = blob_download_to_df(bucket_name, 'news_sources.csv')
+            news_vol_df['timestamp_tz'] = news_vol_df['timestamp_tz'].apply(lambda x : x[:-4]) # remove decimals
+            #if yes, get the most recent date
+            most_recent_date = news_vol_df['timestamp_tz'].max()
+            start_date = datetime.strptime(most_recent_date, '%Y-%m-%d %H:%M:%S').strftime("%Y-%m-%d")
+            end_date = datetime.today().strftime("%Y-%m-%d")
+
         else:    
-            start_date = (datetime.today()- relativedelta(months=2)).strftime("%Y-%m-%d") 
+            # else take 3 months historical data
+            start_date = (datetime.today()- relativedelta(months=3)).strftime("%Y-%m-%d") 
             end_date = datetime.today().strftime("%Y-%m-%d")
 
         news = News(True)

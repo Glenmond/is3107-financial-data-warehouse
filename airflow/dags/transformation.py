@@ -62,14 +62,11 @@ def transform_task_group():
         # Preprocessing
         datapreprecessor = DataPreprocessor(dict_df, batch_id)
 
-        dict_based = DictionaryModel(datapreprecessor.data, from_year)
+        bt = Backtest(datapreprecessor.data, from_year)
+        bt_based = bt.predict()
+
+        dict_based = DictionaryModel(bt_based, from_year)
         fomc_df = dict_based.predict()
-
-        # bt = Backtest(datapreprecessor.data, from_year)
-        # bt_based = bt.predict()
-
-        # dict_based = DictionaryModel(bt_based, from_year)
-        # fomc_df = dict_based.predict()
 
         print(f"===== Modelling Process Completed =====".title())
 

@@ -59,10 +59,9 @@ class News():
         self.start = start_date
         self.end = end_date
 
-        dates = [x.split(' ') for x in pd.date_range(self.start, self.end, freq='MS').strftime("%Y %-m").tolist()]
         if self.spikes != True: # news spikes not True
-            print("Getting articles for news..." + 'Date range: ' + str(dates[0]) + ' to ' + str(dates[-1]))
-            
+            print("Getting articles for news..." + 'Date range: ' + str(start_date) + ' to ' + str(end_date))
+
             ldf = []
             for k, v in news_sources.items():
                 temp_df = self.download_data(v, self.start, self.end)
@@ -75,7 +74,7 @@ class News():
             self.news_df = news_sources_df
         
         else:
-            print("Getting articles for news volume spikes..." + 'Date range: ' + str(dates[0]) + ' to ' + str(dates[-1]))
+            print("Getting articles for news volumes spikes..." + 'Date range: ' + str(start_date) + ' to ' + str(end_date))
             
             ldf = []
             for k, v in news_volume_spikes.items():
