@@ -118,15 +118,22 @@ def get_most_recent_date_of_prices(bucket_name):
     """
     Returns the most recent date of prices from previous runs
     """
-    #check if DAG has been run before
-    if blob_exists(bucket_name, 'prices.csv'):
-        prices = blob_download_to_df(bucket_name, 'prices.csv')
-        #if yes, get the most recent date
-        most_recent_date = prices['Date'].max()
-        recent_date = datetime.strptime(most_recent_date, '%Y-%m-%d')
-    else: 
+    #check if the bucket exists 
+    client = storage.Client()
+    #check if the bucket exists
+    if client.bucket(bucket_name).exists():
+        #if there is the bucket, check if prices.csv has been extracted before
+        if blob_exists(bucket_name, 'prices.csv'):
+            prices = blob_download_to_df(bucket_name, 'prices.csv')
+            #if yes, get the most recent date of last run
+            most_recent_date = prices['Date'].max()
+            recent_date = datetime.strptime(most_recent_date, '%Y-%m-%d')
+        else: 
+            #if no, then get historical data which is 1 year ago
+            recent_date = datetime.today() - relativedelta(months=12)
+    else:
         #if no, then get historical data which is 1 year ago
-        recent_date = (datetime.today() - relativedelta(months=12)).strftime("%Y-%m-%d")
+        recent_date = datetime.today() - relativedelta(months=12)
     return recent_date
 
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_cloud_path
