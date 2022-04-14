@@ -249,7 +249,7 @@ class DataPreprocessor:
             )
 
             print(f"===== {k} filtering for relevant keywords =====".title())
-            df.to_csv(f"{k}_df_preprocessor_initial_sentences.csv")
+
             if k == "news":
 
                 df["filterSentences"] = df["sentences"].apply(

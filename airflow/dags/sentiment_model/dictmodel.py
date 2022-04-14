@@ -19,7 +19,7 @@ class DictionaryModel:
         for name in self.docs:
             df = self.classify(name)
             self.data[name] = df
-            df.to_csv(f"{name}_df_dict_model.csv")
+
         return self.combine_df()
         
     def negated(self, word):
