@@ -40,7 +40,6 @@ class Backtest:
         for name in self.docs:
             df = self.classify(name)
             self.data[name] = df  # replace the historical dictionary
-            df.to_csv(f"{name}_df_backtest.csv")
         return self.data
 
     def classify(self, name):
@@ -107,36 +106,6 @@ class Backtest:
         )
 
         return df
-
-    # def update(self, curr_df, name):
-    #     """
-    #     Update historical dataframe with latest results and override with original dataframe
-    #     Rules:
-    #     1. Update maximum up to 1 year from the latest data in existing dataframe
-    #     """
-
-    #     # get last index of the curr dataframe
-    #     old_df = self.data["historical"][name]
-    #     start_dt = curr_df["date"].iloc[0]  # start date of new df
-    #     hist_end_dt = old_df["date"].iloc[
-    #         -12
-    #     ]  # historical end date, maximum override 12 rows
-
-    #     if start_dt < hist_end_dt:
-    #         curr_df = curr_df[(curr_df["date"] >= hist_end_dt)]
-    #         old_df = old_df[(old_df["date"] < hist_end_dt)]
-
-    #     else:  # start_dt >= hist_end_dt
-    #         old_df = old_df[(old_df["date"] < start_dt)]
-
-    #     df = pd.concat([old_df, curr_df])
-    #     df.reset_index(inplace=True, drop=True)
-    #     df = self.scale(df)
-
-    #     # self.save_df(name, df)
-    #     self.data["historical"][name] = df  # replace the historical dictionary
-
-
 
     def save_df(self, name, df):
         """
