@@ -14,16 +14,16 @@ sgir.sora as Sora,
 div.Dividends as Dividends,
 fgi.FG_Textvalue as Fear_Greed_Value,
 esg.Total_ESG as ESG_Score,
-ns.News_spikes_w as News_spikes_w
-ns.News_spikes_m as News_spikes_m
-ns.Avg_ess as Avg_ess
-ns.Avg_ess_w as Avg_ess_w
-ns.Avg_ess_m as Avg_ess_m
-ns.Avg_str_ess_w as Avg_str_ess_w
-ns.Avg_str_ess_m as Avg_str_ess_m
-fomc.Score_Statement_ML as Score_Statement_ML
-fomc.Score_Statement_DB as Score_Statement_DB
-fomc.Score_Minutes_ML as Score_Minutes_ML
+ns.News_spikes_w as News_spikes_w,
+ns.News_spikes_m as News_spikes_m,
+ns.Avg_ess as Avg_ess,
+ns.Avg_ess_w as Avg_ess_w,
+ns.Avg_ess_m as Avg_ess_m,
+ns.Avg_str_ess_w as Avg_str_ess_w,
+ns.Avg_str_ess_m as Avg_str_ess_m,
+fomc.Score_Statement_ML as Score_Statement_ML,
+fomc.Score_Statement_DB as Score_Statement_DB,
+fomc.Score_Minutes_ML as Score_Minutes_ML,
 fomc.Score_Minutes_DB as Score_Minutes_DB
 FROM `{{ params.project_id }}.{{ params.dwh_dataset }}.D_ALL_PRICE` ps 
 LEFT JOIN `{{ params.project_id }}.{{ params.dwh_dataset }}.D_STOCK_INFO` si 

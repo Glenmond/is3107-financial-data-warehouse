@@ -315,90 +315,70 @@ def extract_data_task_group():
         """
         Scrapes CNN Fear and Greed Index HTML page
         """
-        today_date = datetime.today().strftime("%Y-%m-%d")
-        #If the file exits, then get historical data, if not then start with empty df
-        if blob_exists(bucket_name, 'fear_greed_index.csv'):
-            fear_greed_index = blob_download_to_df(bucket_name, 'fear_greed_index.csv')
-            fear_greed_index = fear_greed_index.iloc[: , 1:]
-        else: 
-            fear_greed_index = pd.DataFrame()
-  
-        #only extract when there is no historical value or today's data is not updated 
-        if fear_greed_index.empty or (fear_greed_index.empty is False and today_date in fear_greed_index['Date'].values is False):
-            #Scrape data from webpage
-            text_soup_cnn = BeautifulSoup(
-                _get_html("https://money.cnn.com/data/fear-and-greed/"),
-                "lxml",
-            )
 
-            # Extract in fear and greed index
-            index_data = (
-                text_soup_cnn.findAll("div", {"class": "modContent feargreed"})[0]
-                .contents[0]
-                .text
-            )
+        #daily extract when there is no historical value or today's data is not updated 
+        #Scrape data from webpage
+        text_soup_cnn = BeautifulSoup(
+            _get_html("https://money.cnn.com/data/fear-and-greed/"),
+            "lxml",
+        )
+
+        # Extract in fear and greed index
+        index_data = (
+            text_soup_cnn.findAll("div", {"class": "modContent feargreed"})[0]
+            .contents[0]
+            .text
+        )
         
-            #Format web data into dataframe
-            transformed_df = split_fear_gread_web_text_to_dataframe(index_data)
-            daily_data_df = transformed_df.iloc[0:1]
-            today_date = (datetime.today() - relativedelta(days=1)).strftime("%Y-%m-%d")
-            daily_data_df.insert(0, "Date", today_date, True)
-            prev_close = transformed_df._get_value(1, 'FG_Value')
-            daily_data_df['FG_Close'] = [prev_close]
-            prev_close_text = transformed_df._get_value(1, 'FG_Textvalue')
-            daily_data_df['FG_Closetext'] = [prev_close_text]
-
-        else:
-            daily_data_df =  fear_greed_index
-        return daily_data_df
+        #Format web data into dataframe
+        transformed_df = split_fear_gread_web_text_to_dataframe(index_data)
+        daily_data_df = transformed_df.iloc[0:1]
+        data_date = (datetime.today() - relativedelta(days=1)).strftime("%Y-%m-%d")
+        daily_data_df.insert(0, "Date", data_date, True)
+        prev_close = transformed_df._get_value(1, 'FG_Value')
+        daily_data_df['FG_Close'] = [prev_close]
+        prev_close_text = transformed_df._get_value(1, 'FG_Textvalue')
+        daily_data_df['FG_Closetext'] = [prev_close_text]
+        result = daily_data_df
+        return result
 
     @task(task_id='extract_esg_score')
     def extract_esg_score(sti_tickers, bucket_name):
         """
         Scrapes latest ESG Score from Yahoo Finance
         """
-        today_date = datetime.today().strftime("%Y-%m-%d")
-        #get historical data on the gcs
-        if blob_exists(bucket_name, 'esg_score.csv'):
-            esg_final = blob_download_to_df(bucket_name, 'esg_score.csv')
-            esg_final = esg_final.iloc[: , 1:]
-        else: 
-            esg_final = pd.DataFrame()
-        
-        #only extract when there is no historical value or today's data is not updated 
-        if esg_final.empty or (esg_final.empty is False and today_date in esg_final['Date'].values is False):
-            tickers_list = [*sti_tickers.keys()]
-            main_df = pd.DataFrame()
-            esg_data = pd.DataFrame()
-            for ticker in tickers_list:
-                try:
-                    ticker_name = yf.Ticker(ticker)
-                    ticker_info = ticker_name.info
-                    ticker_df = pd.DataFrame.from_dict(ticker_info.items()).T
-                    #the above line will parse the dict response into a DataFrame
-                    ticker_df.columns = ticker_df.iloc[0]
-                    #above line will rename all columns to first row of dataframe
-                    #as all the headers come up in the 1st row, next line will drop the 1st line
-                    ticker_df = ticker_df.drop(ticker_df.index[0])
-                    main_df = main_df.append(ticker_df)
-                    #if no response from Yahoo received, it will pass to next ticker
-                    if ticker_name.sustainability is not None: 
-                        #response dataframe
-                        ticker_df_esg = ticker_name.sustainability.T 
-                        #adding new column 'symbol' in response df
-                        ticker_df_esg['symbol'] = ticker 
-                        #attaching the response df to esg_data
-                        esg_data = esg_data.append(ticker_df_esg) 
-                #in case yfinance API misbehaves
-                except (IndexError, ValueError) as e: 
-                    print(e)
-            main_df = main_df[['symbol', 'sector', 'previousClose', 'sharesOutstanding']]
-            esg_data = esg_data[['symbol', 'socialScore', 'governanceScore', 'totalEsg', 'environmentScore']]
-            final_df = main_df.merge(esg_data, how='left', on='symbol')
-            final_df.insert(0, "Date", today_date, True)
-        # no need to extract data
-        else: 
-            final_df = esg_final
+
+        #daily extract 
+        tickers_list = [*sti_tickers.keys()]
+        main_df = pd.DataFrame()
+        esg_data = pd.DataFrame()
+        for ticker in tickers_list:
+            try:
+                ticker_name = yf.Ticker(ticker)
+                ticker_info = ticker_name.info
+                ticker_df = pd.DataFrame.from_dict(ticker_info.items()).T
+                #the above line will parse the dict response into a DataFrame
+                ticker_df.columns = ticker_df.iloc[0]
+                #above line will rename all columns to first row of dataframe
+                #as all the headers come up in the 1st row, next line will drop the 1st line
+                ticker_df = ticker_df.drop(ticker_df.index[0])
+                main_df = main_df.append(ticker_df)
+                #if no response from Yahoo received, it will pass to next ticker
+                if ticker_name.sustainability is not None: 
+                    #response dataframe
+                    ticker_df_esg = ticker_name.sustainability.T 
+                    #adding new column 'symbol' in response df
+                    ticker_df_esg['symbol'] = ticker 
+                    #attaching the response df to esg_data
+                    esg_data = esg_data.append(ticker_df_esg) 
+            #in case yfinance API misbehaves
+            except (IndexError, ValueError) as e: 
+                print(e)
+        main_df = main_df[['symbol', 'sector', 'previousClose', 'sharesOutstanding']]
+        esg_data = esg_data[['symbol', 'socialScore', 'governanceScore', 'totalEsg', 'environmentScore']]
+        final_df = main_df.merge(esg_data, how='left', on='symbol')
+        data_date = (datetime.today() - relativedelta(days=1)).strftime("%Y-%m-%d")
+        final_df.insert(0, "Date", data_date, True)
 
         return final_df 
 

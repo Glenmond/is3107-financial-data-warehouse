@@ -111,7 +111,7 @@ ESG_SCORE = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
 
 FOMC = [SchemaField('Date', 'DATE', 'NULLABLE', None, ())
 ,SchemaField('Score_Statement_ML', 'FLOAT', 'NULLABLE', None, ())
-,SchemaField('Score_Statment_DB', 'FLOAT', 'NULLABLE', None, ())
+,SchemaField('Score_Statement_DB', 'FLOAT', 'NULLABLE', None, ())
 ,SchemaField('Score_Minutes_ML', 'FLOAT', 'NULLABLE', None, ())
 ,SchemaField('Score_Minutes_DB', 'FLOAT', 'NULLABLE', None, ())
 ,]
