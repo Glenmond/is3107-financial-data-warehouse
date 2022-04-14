@@ -1,0 +1,32 @@
+-- Create SG_IR Table
+
+CREATE TABLE IF NOT EXISTS staging.S_PG_SG_IR(
+    aggregate_volume decimal NULL,
+    calculation_method varchar(20) NULL,
+    commercial_bills_3m decimal NULL,
+    comp_sora_1m decimal NULL,
+    comp_sora_3m decimal NULL,
+    comp_sora_6m decimal NULL,
+    Date_ varchar(20) NULL,
+    highest_transaction decimal NULL,
+    interbank_12m decimal NULL,
+    interbank_1m decimal NULL,
+    interbank_1w decimal NULL,
+    interbank_2m decimal NULL,
+    interbank_3m decimal NULL, 
+    interbank_6m decimal NULL,
+    interbank_overnight decimal NULL,
+    lowest_transaction decimal NULL,
+    on_rmb_facility_rate decimal NULL,
+    preliminary decimal NULL,
+    published_date varchar(20) NULL,
+    gs_repo_overnight_rate decimal NULL,
+    sor_average decimal NULL,
+    sora decimal NULL,
+    sora_index decimal NULL,
+    standing_facility_borrow decimal NULL,
+    standing_facility_deposit decimal NULL,
+    usd_sibor_3m decimal NULL,
+    timestamp_ varchar(20) NULL,
+    PRIMARY KEY(Date_)
+    );

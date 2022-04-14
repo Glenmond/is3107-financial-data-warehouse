@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS staging.S_PG_FEAR_GREED_INDEX(
+    Date_ TEXT NOT NULL,
+    Time_ TEXT NULL,
+    FG_Value INTEGER NULL,
+    FG_Textvalue TEXT NULL,
+    FG_Close INTEGER NULL,
+    FG_Closetext TEXT NULL,
+    PRIMARY KEY (Date_)
+);

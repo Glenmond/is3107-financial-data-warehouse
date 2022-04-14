@@ -14,14 +14,8 @@ import random
 import requests
 import io
 
-try:
-    from fomc.FomcStatement import FomcStatement
-    from fomc.FomcMinutes import FomcMinutes
-    from news.News import News
-except ModuleNotFoundError: 
-    from .fomc.FomcStatement import FomcStatement
-    from .fomc.FomcMinutes import FomcMinutes
-    from .news.News import News
+from fomc import FomcStatement, FomcMinutes
+from news import News
 
 def get_adj_close(tickers, start_date, end_date):
     """
