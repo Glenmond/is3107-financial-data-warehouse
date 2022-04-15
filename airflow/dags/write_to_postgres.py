@@ -44,14 +44,14 @@ def write_to_postgres():
         'S_PG_EXCHANGE_RATE': 'exchange_rates',
         'S_PG_SG_IR': 'sg_ir',
         'S_PG_STOCK_INFO': 'stock_info',
-        #'S_PG_STOCK_FUNDAMENTALS': 'stock_fundamentals',
+        'S_PG_STOCK_FUNDAMENTALS': 'stock_fundamentals',
         'S_PG_STOCK_DIVIDEND': 'stock_dividends',
-        #'S_PG_FOMC_MINUTES': 'fomc_minutes',
-        #'S_PG_FOMC_STATEMENT': 'fomc_statement',
+        'S_PG_FOMC_MINUTES': 'fomc_minutes',
+        'S_PG_FOMC_STATEMENT': 'fomc_statement',
         'S_PG_NEWS_SOURCES': 'news_sources',
         'S_PG_NEWS_VOL_SPIKES': 'news_volumes_spikes',
         'S_PG_FEAR_GREED_INDEX': 'fear_greed_index',
-        #'S_PG_ESG_SCORE': 'esg_score'
+        'S_PG_ESG_SCORE': 'esg_score'
     }
 
     for key, value in tables_ids.items(): 
