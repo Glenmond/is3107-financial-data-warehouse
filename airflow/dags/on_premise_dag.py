@@ -8,7 +8,8 @@ from write import write_to_gcs_task_group
 from staging import gcs_to_staging_task_group
 from transformation import transform_task_group
 from load import load_dwh_task_group
-
+from create_postgres_staging import create_pg_staging
+from write_to_postgres import write_to_postgres
 from check_gcs_conn import check_gcs_conn
 from write_from_postgres_to_gcs import write_from_postgres_to_gcs_task_group
 
@@ -53,7 +54,7 @@ def on_premise_dag():
     check_availability = BranchPythonOperator(task_id="check_gcs_avail", python_callable=_get_gcs_conn)
 
     start  >> check_conn >> check_availability
-    check_availability >> pg_to_gcs >> gcs_to_staging >> transformation >> load_dwh >> end
+    check_availability >> gcs_available >> pg_to_gcs >> gcs_to_staging >> transformation >> load_dwh >> end
     check_availability >> end
     
 on_premise_dag = on_premise_dag()
