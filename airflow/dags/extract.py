@@ -9,10 +9,13 @@ from params import google_cloud_path, gs_bucket
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
+from check_gcs_conn import blob_exists, blob_download_to_df
 from bs4 import BeautifulSoup
 import random
 import requests
 import io
+
+from airflow.operators.python import PythonOperator
 
 from fomc import FomcStatement, FomcMinutes
 from news import News
@@ -46,26 +49,6 @@ def array_to_df(values, ticker, ta, subta=None, blob_exists=True):
     df['TA'] = ta
     df['TA_2'] = subta
     df = df.rename_axis('Date').reset_index()
-    return df
-
-def blob_exists(bucket_name, filename):
-    """
-    Helper function to check if bucket exists in GCS
-    """
-    client = storage.Client()
-    bucket = client.get_bucket(bucket_name)
-    blob = bucket.blob(filename)
-    return blob.exists()
-
-def blob_download_to_df(bucket_name, filename):
-    """
-    Retrieves CSV file from GCS
-    """
-    client = storage.Client()
-    bucket = client.get_bucket(bucket_name)
-    blob = bucket.blob(filename)
-    data = blob.download_as_string()
-    df = pd.read_csv(io.BytesIO(data))
     return df
 
 def _get_user_agent() -> str:
@@ -118,18 +101,25 @@ def get_most_recent_date_of_prices(bucket_name):
     """
     Returns the most recent date of prices from previous runs
     """
-    #check if the bucket exists 
-    client = storage.Client()
     #check if the bucket exists
-    if client.bucket(bucket_name).exists():
+    try:
+        client = storage.Client()
+        gcs_available = True
+    except:
+        gcs_available = False
+
+    if gcs_available:
+        if client.bucket(bucket_name).exists():
         #if there is the bucket, check if prices.csv has been extracted before
-        if blob_exists(bucket_name, 'prices.csv'):
-            prices = blob_download_to_df(bucket_name, 'prices.csv')
-            #if yes, get the most recent date of last run
-            most_recent_date = prices['Date'].max()
-            recent_date = datetime.strptime(most_recent_date, '%Y-%m-%d')
-        else: 
-            #if no, then get historical data which is 1 year ago
+            if blob_exists(bucket_name, 'prices.csv'):
+                prices = blob_download_to_df(bucket_name, 'prices.csv')
+                #if yes, get the most recent date of last run
+                most_recent_date = prices['Date'].max()
+                recent_date = datetime.strptime(most_recent_date, '%Y-%m-%d')
+            else: 
+                #if no, then get historical data which is 1 year ago
+                recent_date = datetime.today() - relativedelta(months=12)
+        else:
             recent_date = datetime.today() - relativedelta(months=12)
     else:
         #if no, then get historical data which is 1 year ago
@@ -148,18 +138,8 @@ def extract_data_task_group():
     located
     [here](https://airflow.apache.org/docs/apache-airflow/stable/tutorial_taskflow_api.html)
     """
-    #TODO Task to check if BigQuery tables exists
-    @task()
-    def check_if_gcs_bucket_exists(bucket_name):
-        """
-        Check if bucket in Google Cloud Storage Exists for intermediate data dump
-        """
-        client = storage.Client()
-        if client.bucket(bucket_name).exists():
-            return
-        else:
-            client.bucket(bucket_name).create()
-            return 
+    def get_gcs_availability(**kwargs):
+        return kwargs['ti'].xcom_pull(task_ids=f"check_conn")
 
     @task()
     def scrape_sti_tickers():
@@ -193,7 +173,7 @@ def extract_data_task_group():
         full_tickers = {**sti_tickers, **fixed_tickers}
         tickers_list = [*full_tickers.keys()]
         #check if prices data is extracted before
-        if blob_exists(bucket_name, 'prices.csv'):
+        if gcs_available and blob_exists(bucket_name, 'prices.csv'):
             #if yes, get the most recent date and extract past one month data from the recent date till current date for TA analysis
             prices_df = get_adj_close(tickers_list, start_date=(recent_date - relativedelta(months=1)).strftime("%Y-%m-%d"), end_date=(datetime.today()).strftime("%Y-%m-%d"))
         else:    
@@ -206,7 +186,7 @@ def extract_data_task_group():
         """
         Extract the latest stock information (Reference Data) from Yahoo Finance
         """
-        if blob_exists(bucket_name, 'stock_info.csv') is False or (datetime.today().day == 1 and datetime.today().month in [1, 4, 7, 10]):
+        if (gcs_available is False) or (blob_exists(bucket_name, 'stock_info.csv') is False) or (datetime.today().day == 1 and datetime.today().month in [1, 4, 7, 10]):
             tickers_list = [*sti_tickers.keys()]
             info_df = None
             for i in tickers_list:
@@ -230,7 +210,7 @@ def extract_data_task_group():
         """
         Extract latest stock fundamentals (Accounting Data) from Yahoo Finance
         """
-        if blob_exists(bucket_name, 'stock_fundamentals.csv') is False or (datetime.today().day == 1 and datetime.today().month in [1, 4, 7, 10]):
+        if (gcs_available is False) or (blob_exists(bucket_name, 'stock_fundamentals.csv') is False) or (datetime.today().day == 1 and datetime.today().month in [1, 4, 7, 10]):
             tickers_list = [*sti_tickers.keys()]
             fun_df = None
             fund_list = ['Total Revenue', 'Total Assets', 'Cash', 'Total Current Liabilities', 'Total Liab', 'Net Income', 'Total Stockholder Equity', 'Common Stock', 'Treasury Stock']
@@ -284,7 +264,7 @@ def extract_data_task_group():
             'SGDGBP=X': 'SGD/GBP'
         }
         exchange_rate_list = [*exchange_rate_mapping.keys()]
-        if blob_exists(bucket_name, 'exchange_rates.csv'):
+        if gcs_available and blob_exists(bucket_name, 'exchange_rates.csv'):
             exchange_rate_df = get_adj_close(exchange_rate_list, start_date=(datetime.today() - relativedelta(months=2)).strftime("%Y-%m-%d"), end_date=(datetime.today()).strftime("%Y-%m-%d"))
         else:    
             exchange_rate_df = get_adj_close(exchange_rate_list, start_date=(datetime.today() - relativedelta(months=12)).strftime("%Y-%m-%d"), end_date=(datetime.today()).strftime("%Y-%m-%d"))
@@ -297,7 +277,7 @@ def extract_data_task_group():
         """
         Extract latest SORA data from MAS API
         """
-        if blob_exists(bucket_name, 'sg_ir.csv'):
+        if gcs_available and blob_exists(bucket_name, 'sg_ir.csv'):
             start_date = (datetime.today()- relativedelta(months=6)).strftime("%Y-%m-%d") 
             end_date = datetime.today().strftime("%Y-%m-%d") 
         else:    
@@ -388,7 +368,7 @@ def extract_data_task_group():
         """
         Return FOMC Statement Data
         """
-        if blob_exists(bucket_name, 'fomc_statement.csv'):
+        if gcs_available and blob_exists(bucket_name, 'fomc_statement.csv'):
             from_year = int((datetime.today()- relativedelta(months=3)).strftime("%Y"))
         else:    
             from_year = int((datetime.today()- relativedelta(months=6)).strftime("%Y"))
@@ -403,7 +383,7 @@ def extract_data_task_group():
         """
         Return FOMC Minutes Data
         """
-        if blob_exists(bucket_name, 'fomc_minutes.csv'):
+        if gcs_available and blob_exists(bucket_name, 'fomc_minutes.csv'):
             from_year = int((datetime.today()- relativedelta(months=3)).strftime("%Y"))
         else:    
             from_year = int((datetime.today()- relativedelta(months=6)).strftime("%Y"))
@@ -418,7 +398,7 @@ def extract_data_task_group():
         """
         Return RavenPack News Headline + Sentiment Data
         """
-        if blob_exists(bucket_name, 'news_sources.csv'):
+        if gcs_available and blob_exists(bucket_name, 'news_sources.csv'):
             news_df = blob_download_to_df(bucket_name, 'news_sources.csv')
             #if yes, get the most recent date
             news_df['timestamp_tz'] = news_df['timestamp_tz'].apply(lambda x : x[:-4]) # remove decimals
@@ -441,7 +421,7 @@ def extract_data_task_group():
         """
         Return RavenPack News Volume Spikes
         """
-        if blob_exists(bucket_name, 'news_volume_spikes.csv'):
+        if gcs_available and blob_exists(bucket_name, 'news_volume_spikes.csv'):
             news_vol_df = blob_download_to_df(bucket_name, 'news_sources.csv')
             news_vol_df['timestamp_tz'] = news_vol_df['timestamp_tz'].apply(lambda x : x[:-4]) # remove decimals
             #if yes, get the most recent date
@@ -462,10 +442,8 @@ def extract_data_task_group():
 
     # Run Tasks 
     bucket = gs_bucket
-    # Set Credentials
-    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = google_cloud_path
-    # Check if Bucket Exists
-    check_bucket = check_if_gcs_bucket_exists(bucket)
+    gcs_available = PythonOperator(task_id=f'check_gcs_available', python_callable=get_gcs_availability, provide_context=True)
+    
     # Scrape STI Tickers
     tickers = scrape_sti_tickers()
     # Stock Prices 
@@ -487,4 +465,3 @@ def extract_data_task_group():
     # News
     news_sources_df = extract_news_sources(bucket_name=bucket)
     news_volume_spikes_df = extract_news_volume_spikes(bucket_name=bucket)
-    check_bucket >> [price_df, sg_exchange_rates, sg_ir_df, stock_info_df, stock_fundamentals_df, stock_dividends_df, fear_greed_index_df, esg_score_df, news_sources_df, news_volume_spikes_df, fomc_st_df, fomc_min_df] 
