@@ -7,3 +7,4 @@ from .news import *
 from .sentiment_model import *
 from .write import *
 from .email_alert import *
+from .check_gcs_conn import *
