@@ -5,7 +5,7 @@
 2. Installation + Running Instructions
 
 ## 1. Project Description
-Our project aims to build a data pipeline that maintains a data warehouse (DW) that produceds.
+Our project aims to build a data pipeline that maintains a data warehouse (DW) to facilitate discretionary trade decisions.
 #### Objectives/Goals
 1. A data warehouse with a robust system and dynamic ETL pipeline design for ease of constructing new pipelines and maintenance
 2. A harmonized common database schemas that consolidate all external data sources, and utilize good OOP design principles to modularize ETL pipelines
