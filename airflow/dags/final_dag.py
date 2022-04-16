@@ -25,8 +25,7 @@ def _get_gcs_conn(**kwargs):
     else:
         return "on_premise"
 @dag(
-    #schedule_interval='@daily',
-    schedule_interval=None,
+    schedule_interval='@daily',
     description='Daily Extraction to GCS',
     start_date=pendulum.datetime(2021, 1, 1, tz="UTC"),
     catchup=False
